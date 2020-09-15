@@ -14,9 +14,6 @@
                            GENERAL INCLUDES
 --------------------------------------------------------------------*/
 
-
-#include "Lora/LoraAPI.h"
-
 #include "messageAPI.h"
 
 /*--------------------------------------------------------------------
@@ -52,20 +49,43 @@ typedef struct                              /* lora message format  */
 /*--------------------------------------------------------------------
                               PROCEDURES
 --------------------------------------------------------------------*/
-
-
 /*********************************************************************
 *
 *   PROCEDURE NAME:
-*       x
+*       covert_message
 *
 *   DESCRIPTION:
 *       x
 *
 *********************************************************************/
-void example
+void covert_message
     (
-    void                                        /* register address */
+    void
+    )
+{
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+/*----------------------------------------------------------
+Initilize local variables
+----------------------------------------------------------*/
+
+} /* covert_message() */
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*       get_message
+*
+*   DESCRIPTION:
+*       procedure for receiving messages in messageAPI format 
+*       through LoRa
+*
+*********************************************************************/
+bool get_message
+    (
+    rx_message *message,       /* pointer to store message received */
+    lora_errors *errros        /* pointer to store errors received  */
     )
 {
 /*----------------------------------------------------------
@@ -76,4 +96,30 @@ Local variables
 Initilize local variables
 ----------------------------------------------------------*/
 
-} /* example() */
+} /* get_message() */
+
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*       send_message
+*
+*   DESCRIPTION:
+*       procedure for sending messages in messageAPI format 
+*       through LoRa
+*
+*********************************************************************/
+lora_errors send_message
+    (
+    tx_message message                           /* message to send */
+    )
+{
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+
+/*----------------------------------------------------------
+Initilize local variables
+----------------------------------------------------------*/
+
+} /* send_message() */
