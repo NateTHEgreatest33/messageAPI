@@ -1,0 +1,3 @@
+[submodule "LoRa"]
+	path = LoRa
+	url = https://github.com/NateTHEgreatest33/LoRa
