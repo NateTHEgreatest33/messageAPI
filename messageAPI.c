@@ -14,15 +14,28 @@
                            GENERAL INCLUDES
 --------------------------------------------------------------------*/
 
-#include "LoraAPI.h"
+
+#include "Lora/LoraAPI.h"
+
+#include "messageAPI.h"
 
 /*--------------------------------------------------------------------
                           LITERAL CONSTANTS
 --------------------------------------------------------------------*/
 
+
 /*--------------------------------------------------------------------
                                 TYPES
 --------------------------------------------------------------------*/
+
+typedef struct                              /* lora message format  */
+    {
+    location destination;                   /* destination          */
+    location source;                        /* source               */
+    uint8_t size;                           /* size of message      */
+    uint8_t message[ MAX_LORA_MSG_SIZE ];   /* data buffer          */
+    uint8_t crc;                            /* crc                  */
+    } lora_message;
 
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
