@@ -85,4 +85,8 @@ lora_errors init_message
     void
     );
 
+void update_key
+    (
+    uint8_t new_key                                      /* new key */
+    );
 /* messageAPI.h */

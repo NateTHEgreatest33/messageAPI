@@ -23,7 +23,9 @@
 --------------------------------------------------------------------*/
 #define API_VERSION         ( 1 )       /* message API v1                  */
 
-#define MINIMUM_MSG_LENGTH  ( 6 )       /* minium size of message          */
+#define MINIMUM_MSG_LENGTH  ( 6 )       /* minium size of empty message    */
+
+#define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message         */
 
 #define DESTINATION_BYTE    ( 0 )       /* destination byte array index    */
 
@@ -124,8 +126,9 @@ if ( size > MINIMUM_MSG_LENGTH )
     {
     /*----------------------------------------------------------
     Convert header data
-    Byte 1 -- destination byte
-    Byte 2 -- source byte
+    Byte 0 -- destination byte
+    Byte 1 -- source byte
+    Byte 2 -- pad (future expantion)
     Byte 3 -- version/size byte (upper/lower bits)
     Byte 4 -- key byte
     Byte 5 -- start of data region
@@ -237,7 +240,7 @@ if( lora_get_message( &return_message, MAX_LORA_MSG_SIZE, &return_message_size, 
     *errors = return_message_errors;
 
     /*----------------------------------------------------------
-    convert message
+    Convert message
     ----------------------------------------------------------*/
     formatted_array = covert_message( return_message, return_message_size, &return_message_errors);
 
@@ -297,7 +300,14 @@ if( lora_get_message( &return_message, MAX_LORA_MSG_SIZE, &return_message_size, 
         {
         message->source    = ( location ) formatted_array.source;
         }
-    
+    /*----------------------------------------------------------
+    Verify key
+    ----------------------------------------------------------*/
+    if ( current_key != formatted_array.key )
+        {
+        *errors = RX_KEY_ERR;
+        }
+
     /*----------------------------------------------------------
     Set return value true
     ----------------------------------------------------------*/
@@ -333,10 +343,75 @@ lora_errors send_message
 /*----------------------------------------------------------
 Local variables
 ----------------------------------------------------------*/
-
+uint8_t message_array[ MAX_LORA_MSG_SIZE ];
+lora_errors errors;
+uint8_t i;
+uint8_t array_size;
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
+memset( message_array, 0, sizeof( message_array ) );
+errors = RX_NO_ERROR;
+i = 0;
+array_size = 0;
+
+/*----------------------------------------------------------
+Verify message size
+----------------------------------------------------------*/
+if( message.size > MAX_MSG_LENGTH )
+    {
+    return RX_ARRAY_SIZE_ERR;
+    }
+
+/*----------------------------------------------------------
+Convert tx_message to array
+
+Byte 0 -- destination byte
+Byte 1 -- source byte
+Byte 2 -- pad (future expantion)
+Byte 3 -- version/size byte (upper/lower bits)
+Byte 4 -- key byte
+Byte 5 -- start of data region
+Byte X -- crc (last byte) 
+----------------------------------------------------------*/
+message_array[ DESTINATION_BYTE ] = ( uint8_t ) message.destination;
+message_array[ SOURCE_BYTE ] = ( uint8_t ) message.source;
+message_array[ SIZE_BYTE ] = ( API_VERSION << 4 ) + message.size;
+message_array[ KEY_BYTE ] = current_key;
+
+for( i = 0; i < message.size; i++ )
+    {
+    message_array[ i + DATA_START_BYTE ] = message.message[ i ];
+    
+    }
+
+/*----------------------------------------------------------
+Calulate CRC and put in last byte of array
+
+we do not use crc byte in crc caculation so when passing
+in size, we pass in array_size - 1
+----------------------------------------------------------*/
+array_size = message.size + MINIMUM_MSG_LENGTH;
+
+message_array[ array_size - 1 ] = calculate_crc( message_array, ( array_size - 1 ) );
+
+/*----------------------------------------------------------
+Send message
+----------------------------------------------------------*/
+errors = lora_send_message(message_array, array_size );
+
+/*----------------------------------------------------------
+Revert to rx continious mode
+----------------------------------------------------------*/
+if( ! lora_init_continious_rx() )
+    {
+    errors = RX_INIT_ERR;
+    }
+
+/*----------------------------------------------------------
+return errors
+----------------------------------------------------------*/
+return errors;
 
 } /* send_message() */
 
@@ -357,15 +432,45 @@ lora_errors init_message
 /*----------------------------------------------------------
 Local variables
 ----------------------------------------------------------*/
+lora_errors init_errors;
 
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
-
+init_errors = RX_NO_ERROR;
 
 /*----------------------------------------------------------
 Initilize static variables
 ----------------------------------------------------------*/
 current_key = 0x00;
 
+/*----------------------------------------------------------
+Put into rx mode
+----------------------------------------------------------*/
+if( ! lora_init_continious_rx() )
+    {
+    init_errors = RX_INIT_ERR;
+    }
+
+return init_errors;
+
 } /* init_message() */
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*       update_key 
+*
+*   DESCRIPTION:
+*       procedure for updating key used in messageAPI
+*
+*********************************************************************/
+void update_key
+    (
+    uint8_t new_key                                      /* new key */
+    )
+{
+
+current_key = new_key;
+
+} /* update_key() */
