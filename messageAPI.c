@@ -25,8 +25,6 @@
 
 #define MINIMUM_MSG_LENGTH  ( 6 )       /* minium size of empty message    */
 
-#define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message         */
-
 #define DESTINATION_BYTE    ( 0 )       /* destination byte array index    */
 
 #define SOURCE_BYTE         ( 1 )       /* source byte array index         */

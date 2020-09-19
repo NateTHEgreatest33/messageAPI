@@ -14,11 +14,12 @@
 #include <stdio.h> 
 #include <stdbool.h>
 
-#include "Lora/LoraAPI.h"
+#include "LoRa/LoraAPI.h"
 
 /*--------------------------------------------------------------------
                           LITERAL CONSTANTS
 --------------------------------------------------------------------*/
+#define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message  */
 
 /*--------------------------------------------------------------------
                                 TYPES
@@ -39,7 +40,7 @@ typedef struct                              /* rx message format    */
     location source;                        /* source               */
     location destination;                   /* destination          */
     uint8_t size;                           /* size of message[]    */
-    uint8_t message[ MAX_LORA_MSG_SIZE ];   /* data buffer          */
+    uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
     bool valid;                             /* data marked valid?   */
     } rx_message;
 
@@ -48,7 +49,7 @@ typedef struct                              /* tx message format    */
     location source;                        /* source               */
     location destination;                   /* destination          */
     uint8_t size;                           /* size of message[]    */
-    uint8_t message[ MAX_LORA_MSG_SIZE ];   /* data buffer          */
+    uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
     } tx_message;
 
 /*--------------------------------------------------------------------
@@ -63,7 +64,7 @@ typedef struct                              /* tx message format    */
                                 MACROS
 --------------------------------------------------------------------*/
 
-/*--------------------------------------------------------------------
+/*----------------------------------------------------ß----------------
                               PROCEDURES
 --------------------------------------------------------------------*/
 /*--------------------------------------------------------------------
