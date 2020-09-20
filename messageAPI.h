@@ -30,6 +30,7 @@ typedef uint8_t location;          /* source/destination data. add
                                       defines rely on this          */
 enum 
     {
+    EXAMPLE1_MODULE,               /* example module                */
     NUM_OF_MODULES,                /* number of modules             */
     MODULE_NONE,                   /* no module                     */
     INVALID_LOCATION               /* invalid module address        */

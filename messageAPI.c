@@ -17,6 +17,8 @@
 #include "messageAPI.h"
 
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 /*--------------------------------------------------------------------
                           LITERAL CONSTANTS
@@ -133,7 +135,7 @@ uint8_t i;
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
-memset( return_msg, 0, sizeof( return_msg ) );
+memset( &return_msg, 0, sizeof( return_msg ) );
 crc_byte_index = 0;
 i = 0;
 
@@ -258,14 +260,14 @@ lora_message formatted_array;                /* message array formated       */
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
-memset( return_message, 0, sizeof( return_message ) );
+memset( &return_message, 0, sizeof( return_message ) );
 return_message_size     = 0;
 return_message_errors   = RX_TIMEOUT;
 
 /*----------------------------------------------------------
 Check is message has been received, if not exit
 ----------------------------------------------------------*/
-if( lora_get_message( &return_message, MAX_LORA_MSG_SIZE, &return_message_size, &return_message_errors ) )
+if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &return_message_errors ) )
     {
     /*----------------------------------------------------------
     Update errors
@@ -285,7 +287,7 @@ if( lora_get_message( &return_message, MAX_LORA_MSG_SIZE, &return_message_size, 
         /*----------------------------------------------------------
         Calculate and verify CRC and key
         ----------------------------------------------------------*/
-        if ( formatted_array.crc != calculate_crc( &return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
+        if ( formatted_array.crc != calculate_crc( return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
             {
             message->valid = false;
             *errors = RX_CRC_ERROR;
