@@ -84,7 +84,7 @@ bool get_message
 
 lora_errors init_message
     (
-    void
+    lora_config config_data;                 /* SPI Interface info  */
     );
 
 void update_key
