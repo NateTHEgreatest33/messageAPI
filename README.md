@@ -1,4 +1,4 @@
-#TODO LIST:
+### TODO LIST:
 - [x] port orginal code
 - [ ] create better way of defining modules? maybe an add module function to create a dynamic array of modules?
 - [ ] compiler asserts to stop funky setup
