@@ -1,3 +1,13 @@
+#todo list
+
+- [x] port orginal code
+- [ ] get verified working
+- [ ] create stable v1.0
+- [ ] python rPi companion framework
+- [ ] module test framework
+- [ ] system test framework using python test bench
+- [ ] implement v1.1
+
 # messageAPI
 messaging API built ontop of the loRa API
 
