@@ -242,6 +242,9 @@ return crc;
 *       procedure for receiving messages in messageAPI format 
 *       through LoRa
 *
+*   RETURN:
+*       T/F message received y/n
+*
 *********************************************************************/
 bool get_message
     (
@@ -461,7 +464,7 @@ return errors;
 *********************************************************************/
 lora_errors init_message
     (
-    lora_config config_data;                 /* SPI Interface info  */
+    lora_config config_data                  /* SPI Interface info  */
     )
 {
 /*----------------------------------------------------------

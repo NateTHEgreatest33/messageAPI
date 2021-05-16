@@ -14,6 +14,7 @@
 #include <stdio.h> 
 #include <stdbool.h>
 
+#include "sys_def.h"
 #include "LoRa/LoraAPI.h"
 
 /*--------------------------------------------------------------------
@@ -24,18 +25,6 @@
 /*--------------------------------------------------------------------
                                 TYPES
 --------------------------------------------------------------------*/
-typedef uint8_t location;          /* source/destination data. add       
-                                      new modules to begining of
-                                      enum, as code and # of enum
-                                      defines rely on this          */
-enum 
-    {
-    EXAMPLE1_MODULE,               /* example module                */
-    NUM_OF_MODULES,                /* number of modules             */
-    MODULE_NONE,                   /* no module                     */
-    INVALID_LOCATION               /* invalid module address        */
-    }; 
-
 typedef struct                              /* rx message format    */
     {
     location source;                        /* source               */
@@ -84,7 +73,7 @@ bool get_message
 
 lora_errors init_message
     (
-    lora_config config_data;                 /* SPI Interface info  */
+    lora_config config_data                  /* SPI Interface info  */
     );
 
 void update_key
