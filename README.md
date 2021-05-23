@@ -1,5 +1,6 @@
 ### TODO LIST:
 - [x] port orginal code
+- [ ] INST parser and # of messages return instead of T/F
 - [ ] create better way of defining modules? maybe an add module function to create a dynamic array of modules?
 - [ ] compiler asserts to stop funky setup
 - [ ] get verified working
