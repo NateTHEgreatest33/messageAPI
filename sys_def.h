@@ -30,8 +30,10 @@ typedef uint8_t location;          /* source/destination data. add
                                       defines rely on this          */
 enum 
     {
-    EXAMPLE1_MODULE,               /* example module (ADD HERE)     */
+    RPI_MODULE,                    /* raspberry pi module           */
+    TIVA_MODULE,                   /* tiva launchpad module         */
     NUM_OF_MODULES,                /* number of modules             */
+    
     MODULE_NONE,                   /* no module                     */
     INVALID_LOCATION               /* invalid module address        */
     }; 
