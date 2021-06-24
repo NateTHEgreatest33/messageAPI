@@ -1,13 +1,15 @@
 ### TODO LIST:
 - [x] port orginal code
-- [ ] INST parser and # of messages return instead of T/F
-- [ ] create better way of defining modules? maybe an add module function to create a dynamic array of modules?
+- [x] REMOVED: INST parser and # of messages return instead of T/F
+- [x] create better way of defining modules? maybe an add module function to create a dynamic array of modules?
 - [ ] compiler asserts to stop funky setup
+- [x] LoRa read/write working
+- [ ] 
 - [ ] get verified working
 - [ ] create stable v1.0
 - [ ] python rPi companion framework
 - [ ] module test framework
-- [ ] system test framework using python test bench
+- [x] system test framework using python test bench
 - [ ] implement v1.1
 
 # messageAPI
