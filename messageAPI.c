@@ -273,14 +273,24 @@ Check is message has been received, if not exit
 if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &return_message_errors ) )
     {
     /*----------------------------------------------------------
-    Update errors
+    if issues with lora_get_message, update global error
+    and return false
     ----------------------------------------------------------*/
-    *errors = return_message_errors;
-
+    if ( return_message_errors != RX_NO_ERROR )
+        {
+        *errors = return_message_errors;
+        return false;
+        }
+        
     /*----------------------------------------------------------
     Convert message
     ----------------------------------------------------------*/
     formatted_array = covert_message( return_message, return_message_size, &return_message_errors);
+
+    /*----------------------------------------------------------
+    Update errors
+    ----------------------------------------------------------*/
+    *errors = return_message_errors;
 
     /*----------------------------------------------------------
     Verify message
