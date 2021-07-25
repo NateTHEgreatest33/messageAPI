@@ -48,30 +48,54 @@ enum
     INVALID_LOCATION               /* invalid module address        */
     }; 
 ```
-2. LoRa Pin and SPI setup defintions can be found and modified in loRaAPI.c
+2. LoRa Pin and SPI setup defintions are setup using the type lora_config
 ```
-#define SPI_SELECTED            ( SSI0_BASE )          /* SPI 0 selected    */
-#define DATA_PIN                ( 0x08 )               /* pin 3             */
-#define DATA_PORT_GROUP         ( GPIO_PORTA_DATA_R )  /* pin register A    */
+typedef struct 
+    {
+    uint32_t SSI_BASE;                    /* SPI interface selected */
+    CS_port SSI_PORT;                     /* SPI pin selected       */
+    uint8_t  SSI_PIN;                     /* PI port selected       */             
+    } lora_config;                        /* SPI interface info     */
 ```
+3. The data types used for transfer are of rx_message and tx_message type
+```
+typedef struct                              /* rx message format    */
+    {
+    location source;                        /* source               */
+    location destination;                   /* destination          */
+    uint8_t size;                           /* size of message[]    */
+    uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
+    bool valid;                             /* data marked valid?   */
+    } rx_message;
 
+typedef struct                              /* tx message format    */
+    {
+    location source;                        /* source               */
+    location destination;                   /* destination          */
+    uint8_t size;                           /* size of message[]    */
+    uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
+    } tx_message;
+```
 
 
 __Usage:__
 
-1. Before any communication can occour, the LoRa transciver must be setup to receive messages. this is done using the init function:
+1. Before any communication can occour, the LoRa transciver must be setup to receive messages. this is done using the init function. The data passed in is of lora_config type and this function returns data type lora_errors
 ```
-init_message()
+lora_errors init_message
+    (
+    lora_config config_data                  /* SPI Interface info  */
+    );
 ```
 
-2. To send a message use send_message()
+2. To send a message use send_message() which takes in a tx_message and returns an error variable of type lora_errors
 ```
 lora_errors send_message
     (
     tx_message message                           /* message to send */
     );
 ```
-3. To check and receive a message use get_message()
+3. To check and receive a message use get_message(). this returns a boolean true or false depending if a message has been recived. if true, the message will be placed into the providied rx_message variable. The errors variable can be updated even if no message is recived (ie. issues w/ SPI or message sizing).
 ```
 bool get_message
     (
