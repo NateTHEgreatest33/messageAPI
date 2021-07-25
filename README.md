@@ -2,11 +2,10 @@
 - [x] port orginal code
 - [x] REMOVED: INST parser and # of messages return instead of T/F
 - [x] create better way of defining modules? maybe an add module function to create a dynamic array of modules?
-- [ ] compiler asserts to stop funky setup
 - [x] LoRa read/write working
 - [x] LoRa TX/RX working
 - [x] get verified working
-- [ ] create stable v1.0
+- [x] create stable v1.0
 - [ ] python rPi companion framework
 - [ ] module test framework
 - [x] system test framework using python test bench
@@ -101,5 +100,15 @@ bool get_message
     (
     rx_message *message,       /* pointer to store message received */
     lora_errors *errors        /* pointer to store errors received  */
+    );
+```
+
+__Additional Notes:__
+
+1. messageAPI conatins built in crc checking and updating but does not automate updating the message key (byte 4). the function update_key is provided to update the key which is compared agasnt incoming messages.
+```
+void update_key
+    (
+    uint8_t new_key                                      /* new key */
     );
 ```
