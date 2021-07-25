@@ -25,6 +25,8 @@
 --------------------------------------------------------------------*/
 #define API_VERSION         ( 1 )       /* message API v1                  */
 
+#define MAXIMUM_MSG_LENGTH  ( 10 )      /* maximum size of message data    */
+
 #define MINIMUM_MSG_LENGTH  ( 6 )       /* minium size of empty message    */
 
 #define DESTINATION_BYTE    ( 0 )       /* destination byte array index    */
@@ -161,29 +163,39 @@ if ( size > MINIMUM_MSG_LENGTH )
     return_msg.key          = message_array[ KEY_BYTE ];
 
     /*----------------------------------------------------------
-    Retrive crc byte from end
+    Issue with message size variable
     ----------------------------------------------------------*/
-    crc_byte_index = return_msg.size + DATA_START_BYTE;
-    return_msg.crc = message_array[ crc_byte_index ];
-
-    /*----------------------------------------------------------
-    Retrive message
-    ----------------------------------------------------------*/
-    for ( i = 0; i < return_msg.size; i++ )
+    if( return_msg.size > MAXIMUM_MSG_LENGTH )
         {
-        return_msg.message[ i ] = message_array[ i + DATA_START_BYTE ];
+        *error_ptr = RX_INVALID_HEADER;
+        return return_msg;
         }
-    /*----------------------------------------------------------
-    Check for more than one message by using size and verifying
-    all bytes were looked at
-    ----------------------------------------------------------*/
-    if ( crc_byte_index != ( size - 1 ) )
+    else
         {
-        *error_ptr = RX_DOUBLE;
+        /*----------------------------------------------------------
+        Retrive crc byte from end
+        ----------------------------------------------------------*/
+        crc_byte_index = return_msg.size + DATA_START_BYTE;
+        return_msg.crc = message_array[ crc_byte_index ];
+
+        /*----------------------------------------------------------
+        Retrive message
+        ----------------------------------------------------------*/
+        for ( i = 0; i < return_msg.size; i++ )
+            {
+            return_msg.message[ i ] = message_array[ i + DATA_START_BYTE ];
+            }
+        /*----------------------------------------------------------
+        Check for more than one message by using size and verifying
+        all bytes were looked at
+        ----------------------------------------------------------*/
+        if ( crc_byte_index != ( size - 1 ) )
+            {
+            *error_ptr = RX_DOUBLE;
+            }
+
+        return return_msg;
         }
-
-    return return_msg;
-
     }
 else
     {
@@ -281,7 +293,7 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
         *errors = return_message_errors;
         return false;
         }
-        
+
     /*----------------------------------------------------------
     Convert message
     ----------------------------------------------------------*/
@@ -334,7 +346,7 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
         }
     else
         {
-        message->destination    = ( location ) formatted_array.destination;
+        message->destination = ( location ) formatted_array.destination;
         }
     
     /*----------------------------------------------------------
@@ -346,12 +358,12 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
         }
     else
         {
-        message->source    = ( location ) formatted_array.source;
+        message->source = ( location ) formatted_array.source;
         }
     /*----------------------------------------------------------
     Verify key
     ----------------------------------------------------------*/
-    if ( current_key != formatted_array.key )
+    if ( current_key != formatted_array.key && *errors == RX_NO_ERROR )
         {
         *errors = RX_KEY_ERR;
         }
