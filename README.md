@@ -6,7 +6,8 @@
 - [x] LoRa TX/RX working
 - [x] get verified working
 - [x] create stable v1.0
-- [ ] python rPi companion framework
+- [ ] implement current module into code + remove src/dest from tx/rx messages
+- [x] python rPi companion framework
 - [ ] module test framework
 - [x] system test framework using python test bench
 - [ ] implement v1.1
