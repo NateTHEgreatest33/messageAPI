@@ -7,6 +7,8 @@
 - [x] get verified working
 - [x] create stable v1.0
 - [ ] implement current module into code + remove src/dest from tx/rx messages
+- [ ] auto key update (may utilize pad)
+- [ ] encryption + private/public key generation
 - [x] python rPi companion framework
 - [ ] module test framework
 - [x] system test framework using python test bench
