@@ -24,8 +24,9 @@
 --------------------------------------------------------------------*/
 typedef uint8_t location;          /* source/destination data. add       
                                       new modules to begining of
-                                      enum, as code and # of enum
-                                      defines rely on this          */
+                                      enum, as code uses 
+                                      'NUM_OF_MODULES' defined 
+                                      below                         */
 enum 
     {
     RPI_MODULE,                    /* raspberry pi module           */
@@ -40,6 +41,10 @@ enum
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
 --------------------------------------------------------------------*/
+extern const location current_location;   /* current module needs to be
+                                         defined within project files
+                                         & is based on location 
+                                         enum                       */
 
 /*--------------------------------------------------------------------
                               VARIABLES

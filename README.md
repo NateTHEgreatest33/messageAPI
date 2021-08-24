@@ -50,21 +50,24 @@ enum
     INVALID_LOCATION               /* invalid module address        */
     }; 
 ```
-2. LoRa Pin and SPI setup defintions are setup using the type lora_config
+2. current_location must be defined within project side files and is used to parse out only messages intended for the current module.
+```
+const location current_location = EXAMPLE_MODULE1;
+```
+3. LoRa Pin and SPI setup defintions are setup using the type lora_config
 ```
 typedef struct 
     {
     uint32_t SSI_BASE;                    /* SPI interface selected */
     CS_port SSI_PORT;                     /* SPI pin selected       */
-    uint8_t  SSI_PIN;                     /* PI port selected       */             
+    uint8_t  SSI_PIN;                     /* SPI port selected       */             
     } lora_config;                        /* SPI interface info     */
 ```
-3. The data types used for transfer are of rx_message and tx_message type
+4. The data types used for transfer are of rx_message and tx_message type
 ```
 typedef struct                              /* rx message format    */
     {
     location source;                        /* source               */
-    location destination;                   /* destination          */
     uint8_t size;                           /* size of message[]    */
     uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
     bool valid;                             /* data marked valid?   */
@@ -72,7 +75,6 @@ typedef struct                              /* rx message format    */
 
 typedef struct                              /* tx message format    */
     {
-    location source;                        /* source               */
     location destination;                   /* destination          */
     uint8_t size;                           /* size of message[]    */
     uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */

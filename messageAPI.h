@@ -28,7 +28,6 @@
 typedef struct                              /* rx message format    */
     {
     location source;                        /* source               */
-    location destination;                   /* destination          */
     uint8_t size;                           /* size of message[]    */
     uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
     bool valid;                             /* data marked valid?   */
@@ -36,7 +35,6 @@ typedef struct                              /* rx message format    */
 
 typedef struct                              /* tx message format    */
     {
-    location source;                        /* source               */
     location destination;                   /* destination          */
     uint8_t size;                           /* size of message[]    */
     uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */

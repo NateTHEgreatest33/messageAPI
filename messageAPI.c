@@ -338,40 +338,53 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
     memcpy( message->message, formatted_array.message, formatted_array.size );
 
     /*----------------------------------------------------------
-    Verify destination location
+    Verify destination is a valid location
     ----------------------------------------------------------*/
     if( formatted_array.destination >= NUM_OF_MODULES )
         {
-        message->destination = INVALID_LOCATION;
-        }
-    else
-        {
-        message->destination = ( location ) formatted_array.destination;
-        }
-    
-    /*----------------------------------------------------------
-    Verify source location
-    ----------------------------------------------------------*/
-    if( formatted_array.source >= NUM_OF_MODULES )
-        {
-        message->source = INVALID_LOCATION;
-        }
-    else
-        {
-        message->source = ( location ) formatted_array.source;
-        }
-    /*----------------------------------------------------------
-    Verify key
-    ----------------------------------------------------------*/
-    if ( current_key != formatted_array.key && *errors == RX_NO_ERROR )
-        {
-        *errors = RX_KEY_ERR;
-        }
+        /*----------------------------------------------------------
+        Verify destination is our modules
+        ----------------------------------------------------------*/
+        if( formatted_array.destination == current_location )
+            {
+            /*----------------------------------------------------------
+            Verify source location
+            ----------------------------------------------------------*/
+            if( formatted_array.source >= NUM_OF_MODULES )
+                {
+                message->source = INVALID_LOCATION;
+                }
+            else
+                {
+                message->source = ( location ) formatted_array.source;
+                }
 
-    /*----------------------------------------------------------
-    Set return value true
-    ----------------------------------------------------------*/
-    return true;
+            /*----------------------------------------------------------
+            Verify key
+            ----------------------------------------------------------*/
+            if ( current_key != formatted_array.key && *errors == RX_NO_ERROR )
+                {
+                *errors = RX_KEY_ERR;
+                }
+
+            return true;
+            }
+        else
+            {
+            /*----------------------------------------------------------
+            Message valid but not current location
+            ----------------------------------------------------------*/
+            return false;
+            }
+        }
+    else
+        {
+        /*----------------------------
+        sys_def.h is not up to date
+        ----------------------------*/
+        *errors = RX_INVALID_HEADER;
+        return false;
+        }
     }
 else
     {
@@ -435,7 +448,7 @@ Byte 5 -- start of data region
 Byte X -- crc (last byte) 
 ----------------------------------------------------------*/
 message_array[ DESTINATION_BYTE ] = ( uint8_t ) message.destination;
-message_array[ SOURCE_BYTE ] = ( uint8_t ) message.source;
+message_array[ SOURCE_BYTE ] = ( uint8_t ) current_location;
 message_array[ SIZE_BYTE ] = ( API_VERSION << 4 ) + message.size;
 message_array[ KEY_BYTE ] = current_key;
 
