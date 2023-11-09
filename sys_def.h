@@ -31,6 +31,7 @@ enum
     {
     RPI_MODULE,                    /* raspberry pi module           */
     TIVA_MODULE,                   /* tiva launchpad module         */
+    PICO_MODULE,                   /* pi pico module                */
     NUM_OF_MODULES,                /* number of modules             */
     
     MODULE_NONE,                   /* no module                     */
