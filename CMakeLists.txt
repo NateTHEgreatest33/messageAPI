@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
-
-# include(pico_sdk_import.cmake)
 project(messageAPI C ASM)
 
 set(CMAKE_C_STANDARD 11)
-# set(CMAKE_CXX_STANDARD 20)
-add_subdirectory( LoRa )
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/loRa )
+
 pico_sdk_init()
 
 add_library( messageAPI
@@ -19,6 +17,7 @@ target_link_libraries( messageAPI
   # Using Pico W
   pico_cyw43_arch_none
 
+  # libraries
   loraAPI
 )
 
