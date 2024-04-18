@@ -526,3 +526,20 @@ void core::messageInterface::update_key
 p_current_key = new_key;
 
 } /* core::messageInterface::update_key() */
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*       core::messageInterface::~messageInterface 
+*
+*   DESCRIPTION:
+*       deconstructor for messageAPI
+*
+*********************************************************************/
+core::messageInterface::~messageInterface
+    (
+    void
+    )
+{
+
+} /* core::messageInterface::~messageInterface() */
