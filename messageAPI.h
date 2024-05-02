@@ -15,7 +15,7 @@
 #include <stdbool.h>
 
 #include "sys_def.h"
-#include "LoraAPI.h"
+#include "LoRa/LoraAPI.h"
 
 /*--------------------------------------------------------------------
                           LITERAL CONSTANTS
@@ -71,7 +71,7 @@ bool get_message
 
 lora_errors init_message
     (
-    spi_inst_t *spi 
+    lora_config config_data                  /* SPI Interface info  */
     );
 
 void update_key
