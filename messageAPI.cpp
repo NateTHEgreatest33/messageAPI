@@ -1,12 +1,12 @@
 /*********************************************************************
 *
 *   NAME:
-*       messageAPI.c
+*       messageAPI.cpp
 *
 *   DESCRIPTION:
 *       custom messaging API for messaging between different lora devices
 *
-*   Copyright 2020 Nate Lenze
+*   Copyright 2024 Nate Lenze
 *
 *********************************************************************/
 
@@ -14,7 +14,7 @@
                            GENERAL INCLUDES
 --------------------------------------------------------------------*/
 
-#include "messageAPI.h"
+#include "messageAPI.hpp"
 
 #include <string.h>
 #include <stdint.h>
@@ -51,17 +51,17 @@
                                 TYPES
 --------------------------------------------------------------------*/
 
-typedef struct                              /* lora message format  */
-    {
-    location source;                        /* source               */
-    location destination;                   /* destination          */
-    uint8_t pad;                            /* future update space  */
-    uint8_t version;                        /* version of API used  */
-    uint8_t size;                           /* size of message[]    */
-    uint8_t key;                            /* key                  */
-    uint8_t message[ MAX_LORA_MSG_SIZE ];   /* data buffer          */
-    uint8_t crc;                            /* crc                  */
-    } lora_message;
+// typedef struct                              /* lora message format  */
+//     {
+//     location source;                        /* source               */
+//     location destination;                   /* destination          */
+//     uint8_t pad;                            /* future update space  */
+//     uint8_t version;                        /* version of API used  */
+//     uint8_t size;                           /* size of message[]    */
+//     uint8_t key;                            /* key                  */
+//     uint8_t message[ MAX_LORA_MSG_SIZE ];   /* data buffer          */
+//     uint8_t crc;                            /* crc                  */
+//     } lora_message;
 
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
@@ -90,7 +90,7 @@ static uint8_t const crc8_table[] = {
 /*--------------------------------------------------------------------
                               VARIABLES
 --------------------------------------------------------------------*/
-static uint8_t s_current_key; 
+
 /*--------------------------------------------------------------------
                                 MACROS
 --------------------------------------------------------------------*/
@@ -98,18 +98,6 @@ static uint8_t s_current_key;
 /*--------------------------------------------------------------------
                               PROCEDURES
 --------------------------------------------------------------------*/
-uint8_t calculate_crc
-    (
-    uint8_t message_array[],  /* message array to caclulate crc       */
-    uint8_t size              /* size of message_array                */
-    );
-
-lora_message covert_message
-    (
-    uint8_t message_array[],   /* message array to caclulate crc       */
-    uint8_t size,              /* size of message_array                */
-    lora_errors *error_ptr     /* pointer to error variable            */
-    );
 
 /*********************************************************************
 *
@@ -120,11 +108,11 @@ lora_message covert_message
 *       convert message from array to rx_message type
 *
 *********************************************************************/
-lora_message covert_message
+lora_message core::messageInterface::covert_message
     (
     uint8_t message_array[],
     uint8_t size,
-    lora_errors *error_ptr
+    message_errors& errors
     )
 {
 /*----------------------------------------------------------
@@ -167,7 +155,7 @@ if ( size > MINIMUM_MSG_LENGTH )
     ----------------------------------------------------------*/
     if( return_msg.size > MAXIMUM_MSG_LENGTH )
         {
-        *error_ptr = RX_INVALID_HEADER;
+        errors = MSG_INVALID_HEADER;
         return return_msg;
         }
     else
@@ -191,7 +179,7 @@ if ( size > MINIMUM_MSG_LENGTH )
         ----------------------------------------------------------*/
         if ( crc_byte_index != ( size - 1 ) )
             {
-            *error_ptr = RX_DOUBLE;
+            errors = MSG_DOUBLE;
             }
 
         return return_msg;
@@ -199,7 +187,7 @@ if ( size > MINIMUM_MSG_LENGTH )
     }
 else
     {
-    *error_ptr = RX_SIZING;
+    errors = MSG_SIZING;
     return return_msg;
 
     }
@@ -215,7 +203,7 @@ else
 *       caculates crc8 based on inputted message array
 *
 *********************************************************************/
-uint8_t calculate_crc
+uint8_t core::messageInterface::calculate_crc
     (
     uint8_t message_array[],
     uint8_t size
@@ -248,7 +236,7 @@ return crc;
 /*********************************************************************
 *
 *   PROCEDURE NAME:
-*       get_message
+*        core::messageInterface::get_message
 *
 *   DESCRIPTION:
 *       procedure for receiving messages in messageAPI format 
@@ -258,10 +246,10 @@ return crc;
 *       T/F message received y/n
 *
 *********************************************************************/
-bool get_message
+bool core::messageInterface::get_message
     (
     rx_message *message,       /* pointer to store message received */
-    lora_errors *errors        /* pointer to store errors received  */
+    message_errors& errors     /* pointer to store errors received  */
     )
 {
 /*----------------------------------------------------------
@@ -269,46 +257,41 @@ Local variables
 ----------------------------------------------------------*/
 uint8_t return_message[ MAX_LORA_MSG_SIZE ]; /* array holding return message */
 uint8_t return_message_size;                 /* size of return message array */
-lora_errors return_message_errors;           /* errors from lora comm layer  */
-lora_message formatted_array;                /* message array formated       */   
+lora_errors lora_message_errors;             /* errors from lora comm layer  */
+lora_message formatted_array;                /* message array formated       */  
 
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
 memset( &return_message, 0, sizeof( return_message ) );
-return_message_size     = 0;
-return_message_errors   = RX_TIMEOUT;
+return_message_size = 0;
+lora_message_errors = RX_TIMEOUT;
 
 /*----------------------------------------------------------
 Check is message has been received, if not exit
 ----------------------------------------------------------*/
-if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &return_message_errors ) )
+if( p_lora.get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &lora_message_errors ) )
     {
     /*----------------------------------------------------------
     if issues with lora_get_message, update global error
     and return false
     ----------------------------------------------------------*/
-    if ( return_message_errors != RX_NO_ERROR )
+    if ( lora_message_errors != RX_NO_ERROR )
         {
-        *errors = return_message_errors;
+        errors = MSG_HW_ERROR;
         return false;
         }
 
     /*----------------------------------------------------------
     Convert message
     ----------------------------------------------------------*/
-    formatted_array = covert_message( return_message, return_message_size, &return_message_errors);
-
-    /*----------------------------------------------------------
-    Update errors
-    ----------------------------------------------------------*/
-    *errors = return_message_errors;
+    formatted_array = covert_message( return_message, return_message_size, errors );
 
     /*----------------------------------------------------------
     If errors caused message to not be properly converted, exit
     now to avoid future processing.
     ----------------------------------------------------------*/
-    if( *errors != RX_NO_ERROR )
+    if( errors != MSG_NO_ERROR )
         {
         return false;
         }
@@ -319,12 +302,12 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
     if ( formatted_array.crc != calculate_crc( return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
         {
         message->valid = false;
-        *errors = RX_CRC_ERROR;
+        errors = MSG_CRC_ERROR;
         }
-    else if ( formatted_array.key != s_current_key )
+    else if ( formatted_array.key != p_current_key )
         {
         message->valid = false;
-        *errors = RX_KEY_ERR;
+        errors = MSG_KEY_ERR;
         }
     
     /*----------------------------------------------------------
@@ -358,9 +341,9 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
             /*----------------------------------------------------------
             Verify key
             ----------------------------------------------------------*/
-            if ( s_current_key != formatted_array.key && *errors == RX_NO_ERROR )
+            if ( p_current_key != formatted_array.key && errors == MSG_NO_ERROR )
                 {
-                *errors = RX_KEY_ERR;
+                errors = MSG_KEY_ERR;
                 }
 
             return true;
@@ -378,7 +361,7 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
         /*----------------------------
         sys_def.h is not up to date
         ----------------------------*/
-        *errors = RX_INVALID_HEADER;
+        errors = MSG_INVALID_HEADER;
         return false;
         }
     }
@@ -391,20 +374,20 @@ else
 
     }
 
-} /* get_message() */
+} /*  core::messageInterface::get_message() */
 
 
 /*********************************************************************
 *
 *   PROCEDURE NAME:
-*       send_message
+*       core::messageInterface::send_message
 *
 *   DESCRIPTION:
 *       procedure for sending messages in messageAPI format 
 *       through LoRa
 *
 *********************************************************************/
-lora_errors send_message
+bool core::messageInterface::send_message
     (
     tx_message message                           /* message to send */
     )
@@ -416,6 +399,7 @@ uint8_t message_array[ MAX_LORA_MSG_SIZE ];     /* array to send through LoRa */
 lora_errors errors;                             /* lora related errors        */
 uint8_t i;                                      /* interator                  */
 uint8_t array_size;                             /* size of message_array[]    */
+
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
@@ -446,7 +430,7 @@ Byte X -- crc (last byte)
 message_array[ DESTINATION_BYTE ] = ( uint8_t ) message.destination;
 message_array[ SOURCE_BYTE ] = ( uint8_t ) current_location;
 message_array[ SIZE_BYTE ] = ( API_VERSION << 4 ) + message.size;
-message_array[ KEY_BYTE ] = s_current_key;
+message_array[ KEY_BYTE ] = p_current_key;
 
 for( i = 0; i < message.size; i++ )
     {
@@ -467,84 +451,95 @@ message_array[ array_size - 1 ] = calculate_crc( message_array, ( message.size +
 /*----------------------------------------------------------
 Send message
 ----------------------------------------------------------*/
-errors = lora_send_message(message_array, array_size );
+errors = p_lora.send_message(message_array, array_size );
 
 /*----------------------------------------------------------
 Revert to rx continious mode
 ----------------------------------------------------------*/
-if( ! lora_init_continious_rx() )
+if( ! p_lora.init_continious_rx() )
     {
-    errors = RX_INIT_ERR;
+    errors = MSG_HW_ERROR;
     }
 
 /*----------------------------------------------------------
-return errors
+return error status
 ----------------------------------------------------------*/
-return errors;
+if( errors != MSG_NO_ERROR )
+    {
+    return false;
+    }
 
-} /* send_message() */
+return true;
+
+} /* score::messageInterface::end_message() */
 
 /*********************************************************************
 *
 *   PROCEDURE NAME:
-*       init_message
+*       core::messageInterface::messageInterface()
 *
 *   DESCRIPTION:
-*       procedure for setting up message API
+*       Constructor for messageInterface()
 *
 *********************************************************************/
-lora_errors init_message
+core::messageInterface::messageInterface
     (
-    spi_inst_t *spi                          /* SPI Interface info  */
-    )
+    core::loraInterface& l_ref,
+    core::console& c_ref
+    ) :
+    p_lora( l_ref ),
+    p_console( c_ref )
 {
-/*----------------------------------------------------------
-Local variables
-----------------------------------------------------------*/
-lora_errors init_errors;
-
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
-init_errors = RX_NO_ERROR;
-
-/*----------------------------------------------------------
-Initilize static variables
-----------------------------------------------------------*/
-s_current_key = 0x00;
-
-/*----------------------------------------------------------
-Initilize port statics
-----------------------------------------------------------*/
-lora_port_init( spi );
+p_current_key     = 0x00;
+p_init_successful = false;
 
 /*----------------------------------------------------------
 Put into rx mode
 ----------------------------------------------------------*/
-if( ! lora_init_continious_rx() )
+if( ! p_lora.init_continious_rx() )
     {
-    init_errors = RX_INIT_ERR;
+    return;
     }
 
-return init_errors;
+p_init_successful = true;
 
-} /* init_message() */
+} /* core::messageInterface::messageInterface() */
 
 /*********************************************************************
 *
 *   PROCEDURE NAME:
-*       update_key 
+*       core::messageInterface::update_key 
 *
 *   DESCRIPTION:
 *       procedure for updating key used in messageAPI
 *
 *********************************************************************/
-void update_key
+void core::messageInterface::update_key
     (
     uint8_t new_key                                      /* new key */
     )
 {
 
-s_current_key = new_key;
+p_current_key = new_key;
 
-} /* update_key() */
+} /* core::messageInterface::update_key() */
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*       core::messageInterface::~messageInterface 
+*
+*   DESCRIPTION:
+*       deconstructor for messageAPI
+*
+*********************************************************************/
+core::messageInterface::~messageInterface
+    (
+    void
+    )
+{
+
+} /* core::messageInterface::~messageInterface() */
