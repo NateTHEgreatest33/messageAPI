@@ -90,7 +90,7 @@ static uint8_t const crc8_table[] = {
 /*--------------------------------------------------------------------
                               VARIABLES
 --------------------------------------------------------------------*/
-static uint8_t s_current_key; 
+static uint8_t current_key; 
 /*--------------------------------------------------------------------
                                 MACROS
 --------------------------------------------------------------------*/
@@ -186,8 +186,8 @@ if ( size > MINIMUM_MSG_LENGTH )
             return_msg.message[ i ] = message_array[ i + DATA_START_BYTE ];
             }
         /*----------------------------------------------------------
-        Check for more than one message by using raw size and 
-        verifying all bytes were looked at
+        Check for more than one message by using size and verifying
+        all bytes were looked at
         ----------------------------------------------------------*/
         if ( crc_byte_index != ( size - 1 ) )
             {
@@ -305,26 +305,30 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
     *errors = return_message_errors;
 
     /*----------------------------------------------------------
-    If errors caused message to not be properly converted, exit
-    now to avoid future processing.
+    Verify message
     ----------------------------------------------------------*/
-    if( *errors != RX_NO_ERROR )
+    if ( *errors == RX_NO_ERROR )
         {
-        return false;
+        /*----------------------------------------------------------
+        Calculate and verify CRC and key
+        ----------------------------------------------------------*/
+        if ( formatted_array.crc != calculate_crc( return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
+            {
+            message->valid = false;
+            *errors = RX_CRC_ERROR;
+            }
+        else if ( formatted_array.key != current_key )
+            {
+            message->valid = false;
+            *errors = RX_KEY_ERR;
+            }
         }
-
-    /*----------------------------------------------------------
-    Calculate and Verify CRC and key
-    ----------------------------------------------------------*/
-    if ( formatted_array.crc != calculate_crc( return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
+    else
         {
+        /*----------------------------------------------------------
+        Since errors were detected, mark as invalid
+        ----------------------------------------------------------*/
         message->valid = false;
-        *errors = RX_CRC_ERROR;
-        }
-    else if ( formatted_array.key != s_current_key )
-        {
-        message->valid = false;
-        *errors = RX_KEY_ERR;
         }
     
     /*----------------------------------------------------------
@@ -336,7 +340,7 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
     /*----------------------------------------------------------
     Verify destination is a valid location
     ----------------------------------------------------------*/
-    if( formatted_array.destination < NUM_OF_MODULES )
+    if( formatted_array.destination >= NUM_OF_MODULES )
         {
         /*----------------------------------------------------------
         Verify destination is our modules
@@ -358,7 +362,7 @@ if( lora_get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size, &
             /*----------------------------------------------------------
             Verify key
             ----------------------------------------------------------*/
-            if ( s_current_key != formatted_array.key && *errors == RX_NO_ERROR )
+            if ( current_key != formatted_array.key && *errors == RX_NO_ERROR )
                 {
                 *errors = RX_KEY_ERR;
                 }
@@ -446,7 +450,7 @@ Byte X -- crc (last byte)
 message_array[ DESTINATION_BYTE ] = ( uint8_t ) message.destination;
 message_array[ SOURCE_BYTE ] = ( uint8_t ) current_location;
 message_array[ SIZE_BYTE ] = ( API_VERSION << 4 ) + message.size;
-message_array[ KEY_BYTE ] = s_current_key;
+message_array[ KEY_BYTE ] = current_key;
 
 for( i = 0; i < message.size; i++ )
     {
@@ -495,7 +499,7 @@ return errors;
 *********************************************************************/
 lora_errors init_message
     (
-    spi_inst_t *spi                          /* SPI Interface info  */
+    lora_config config_data                  /* SPI Interface info  */
     )
 {
 /*----------------------------------------------------------
@@ -511,12 +515,12 @@ init_errors = RX_NO_ERROR;
 /*----------------------------------------------------------
 Initilize static variables
 ----------------------------------------------------------*/
-s_current_key = 0x00;
+current_key = 0x00;
 
 /*----------------------------------------------------------
 Initilize port statics
 ----------------------------------------------------------*/
-lora_port_init( spi );
+lora_port_init( config_data );
 
 /*----------------------------------------------------------
 Put into rx mode
@@ -545,6 +549,6 @@ void update_key
     )
 {
 
-s_current_key = new_key;
+current_key = new_key;
 
 } /* update_key() */
