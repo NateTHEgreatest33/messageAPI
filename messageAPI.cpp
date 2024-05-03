@@ -51,18 +51,6 @@
                                 TYPES
 --------------------------------------------------------------------*/
 
-// typedef struct                              /* lora message format  */
-//     {
-//     location source;                        /* source               */
-//     location destination;                   /* destination          */
-//     uint8_t pad;                            /* future update space  */
-//     uint8_t version;                        /* version of API used  */
-//     uint8_t size;                           /* size of message[]    */
-//     uint8_t key;                            /* key                  */
-//     uint8_t message[ MAX_LORA_MSG_SIZE ];   /* data buffer          */
-//     uint8_t crc;                            /* crc                  */
-//     } lora_message;
-
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
 --------------------------------------------------------------------*/
