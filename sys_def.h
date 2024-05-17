@@ -34,6 +34,7 @@ enum
     PICO_MODULE,                   /* pi pico module                */
     NUM_OF_MODULES,                /* number of modules             */
     
+    MODULE_ALL,                    /* all modules                   */                   
     MODULE_NONE,                   /* no module                     */
     INVALID_LOCATION               /* invalid module address        */
     }; 
