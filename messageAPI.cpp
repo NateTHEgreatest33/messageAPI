@@ -305,6 +305,18 @@ if( p_lora.get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size,
     memcpy( message->message, formatted_array.message, formatted_array.size );
 
     /*----------------------------------------------------------
+    if module destination is all, overwrite destination as self.
+
+    This solution was implemented to allow for NUM_OF_MODULE
+    checks 
+    ----------------------------------------------------------*/
+    if( formatted_array.destination == MODULE_ALL )
+        {
+        formatted_array.destination = current_location;
+        }
+    
+
+    /*----------------------------------------------------------
     Verify destination is a valid location
     ----------------------------------------------------------*/
     if( formatted_array.destination < NUM_OF_MODULES )
@@ -317,13 +329,13 @@ if( p_lora.get_message( return_message, MAX_LORA_MSG_SIZE, &return_message_size,
             /*----------------------------------------------------------
             Verify source location
             ----------------------------------------------------------*/
-            if( formatted_array.source >= NUM_OF_MODULES )
+            if( formatted_array.source < NUM_OF_MODULES )
                 {
-                message->source = INVALID_LOCATION;
+                message->source = ( location ) formatted_array.source;
                 }
             else
                 {
-                message->source = ( location ) formatted_array.source;
+                message->source = INVALID_LOCATION;
                 }
 
             /*----------------------------------------------------------
