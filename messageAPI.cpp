@@ -707,15 +707,16 @@ return return_msg;
 } /*  core::messageInterface::get_multi_message() */
 
 
-multi_msg_parser lora_prepper( uint8_t message_array[], uint8_t size )
+multi_msg_parser core::messageInterface::lora_prepper( uint8_t message_array[], uint8_t size )
 {
 uin8_t index = 0;
 multi_msg_parser rtn_obj;
 uin8_t msg_index = 0;
 uint8_t msg_size = 0;
+
 while( index < size )
     {
-    
+    msg_index = rtn_obj.num_msg;
     /*----------------------------------------------------------
     data format 
     Byte 0 -- destination byte
@@ -726,28 +727,43 @@ while( index < size )
     Byte 5 -- start of data region
     Byte X -- crc (last byte) 
     ----------------------------------------------------------*/
-    rtn_obj.start_idx[ rtn_obj.num_msg ] = index;
+    rtn_obj.start_idx[ msg_index ] = index;
 
 
-    int current_index = index + 3;
-    if( current_index < size )
+    //skip to byte 3 (sizing data)
+    index += 3;
+
+    //make sure we haven't overrun buffer
+    if( index <= size )
         {
-        rtn_obj.msg_size[ rtn_obj.num_msg ] = ( message_array[ current_index ] & SIZE_MASK );
+        rtn_obj.errors[ msg_index ] =  MSG_SIZING;
+        continue;
         }
 
-    current_index = current_index + rtn_obj.msg_size[ rtn_obj.num_msg ] + 1 /* key byte */ ;
-    current_index++; //one more to move into crc spot?
-    if( current_index < size )
+    //put size data into size variable
+    rtn_obj.msg_size[ msg_index ] = ( SIZE_BYTE & message_array[ index ] );
+
+    //use size to calculate end index
+    // +3 skip key byte and enter data, +size to skip data portion and enter crc byte
+    index += 2 + rtn_obj.msg_size[ msg_index ];
+
+    if( index <= size )
         {
-        rtn_obj.end_idx[ rtn_obj.num_msg ] = current_index;
+        rtn_obj.errors[ msg_index ] = MSG_SIZING;
+        continue;
         }
 
+    //update end index
+    rtn_obj.end_idx[ msg_index ] = index;
+
+    //update errors
+    rtn_obj.errors[ msg_index ] = MSG_NO_ERROR;
 
     //update for the object we just added
     rtn_obj.num_msg++; 
-
-
-    index++;
-    msg_index++;
+    index++; //enter next location of message_array
     }
+
+
+return rtn_obj;
 }
