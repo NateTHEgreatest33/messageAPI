@@ -47,6 +47,7 @@
 
 #define HEADER_BYTE_COUNT   ( 5 )       /* count of non CRC header bytes   */
 
+
 /*--------------------------------------------------------------------
                                 TYPES
 --------------------------------------------------------------------*/
@@ -543,3 +544,210 @@ core::messageInterface::~messageInterface
 {
 
 } /* core::messageInterface::~messageInterface() */
+
+
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*        core::messageInterface::get_multi_message
+*
+*   DESCRIPTION:
+*       procedure for receiving messages in messageAPI format 
+*       through LoRa
+*
+*   RETURN:
+*       T/F message received y/n
+*
+*********************************************************************/
+rx_multi core::messageInterface::get_multi_message
+    (
+    void
+    )
+{
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+rx_multi return_msg;                        /* object holding return message */
+uint8_t raw_lora[ MAX_LORA_MSG_SIZE ];      /* array holding return message */
+uint8_t raw_lora_size;                      /* size of return message array */
+lora_errors lora_message_errors;            /* errors from lora comm layer  */
+lora_message formatted_array;               /* message array formated       */  
+
+/*----------------------------------------------------------
+Initilize local variables
+----------------------------------------------------------*/
+memset( &raw_lora, 0, sizeof( raw_lora ) );
+memset( &return_msg, 0, sizeof( rx_multi ) );
+
+return_message_size = 0;
+lora_message_errors = RX_TIMEOUT;
+
+
+
+/*----------------------------------------------------------
+If no new message, exit 
+----------------------------------------------------------*/
+if( !p_lora.get_message( raw_lora, MAX_LORA_MSG_SIZE, &raw_lora_size, &lora_message_errors ) )
+    {
+    return return_msg;
+    }
+
+/*----------------------------------------------------------
+if issues with lora_get_message, update global error
+and return false
+----------------------------------------------------------*/
+if ( lora_message_errors != RX_NO_ERROR )
+    {
+    return_msg.global_errors = MSG_HW_ERROR;
+    return rx_multi;
+    }
+
+/*----------------------------------------------------------
+Convert message
+----------------------------------------------------------*/
+formatted_array = covert_message( return_message, return_message_size, errors );
+
+/*----------------------------------------------------------
+If errors caused message to not be properly converted, exit
+now to avoid future processing.
+----------------------------------------------------------*/
+if( errors != MSG_NO_ERROR )
+    {
+    return false;
+    }
+
+/*----------------------------------------------------------
+Calculate and Verify CRC and key
+----------------------------------------------------------*/
+if ( formatted_array.crc != calculate_crc( return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
+    {
+    message->valid = false;
+    errors = MSG_CRC_ERROR;
+    }
+else if ( formatted_array.key != p_current_key )
+    {
+    message->valid = false;
+    errors = MSG_KEY_ERR;
+    }
+
+/*----------------------------------------------------------
+Update rx_message
+----------------------------------------------------------*/
+message->size           = formatted_array.size;
+memcpy( message->message, formatted_array.message, formatted_array.size );
+
+/*----------------------------------------------------------
+if module destination is all, overwrite destination as self.
+
+This solution was implemented to allow for NUM_OF_MODULE
+checks 
+----------------------------------------------------------*/
+if( formatted_array.destination == MODULE_ALL )
+    {
+    formatted_array.destination = current_location;
+    }
+
+
+/*----------------------------------------------------------
+Verify destination is a valid location
+----------------------------------------------------------*/
+if( formatted_array.destination < NUM_OF_MODULES )
+    {
+    /*----------------------------------------------------------
+    Verify destination is our modules
+    ----------------------------------------------------------*/
+    if( formatted_array.destination == current_location )
+        {
+        /*----------------------------------------------------------
+        Verify source location
+        ----------------------------------------------------------*/
+        if( formatted_array.source < NUM_OF_MODULES )
+            {
+            message->source = ( location ) formatted_array.source;
+            }
+        else
+            {
+            message->source = INVALID_LOCATION;
+            }
+
+        /*----------------------------------------------------------
+        Verify key
+        ----------------------------------------------------------*/
+        if ( p_current_key != formatted_array.key && errors == MSG_NO_ERROR )
+            {
+            errors = MSG_KEY_ERR;
+            }
+
+        return true;
+        }
+    else
+        {
+        /*----------------------------------------------------------
+        Message valid but not current location
+        ----------------------------------------------------------*/
+        return false;
+        }
+    }
+else
+    {
+    /*----------------------------
+    sys_def.h is not up to date
+    ----------------------------*/
+    errors = MSG_INVALID_HEADER;
+    return false;
+    }
+
+
+/*----------------------------------------------------------
+return object
+----------------------------------------------------------*/
+return return_msg;
+
+} /*  core::messageInterface::get_multi_message() */
+
+
+multi_msg_parser lora_prepper( uint8_t message_array[], uint8_t size )
+{
+uin8_t index = 0;
+multi_msg_parser rtn_obj;
+uin8_t msg_index = 0;
+uint8_t msg_size = 0;
+while( index < size )
+    {
+    
+    /*----------------------------------------------------------
+    data format 
+    Byte 0 -- destination byte
+    Byte 1 -- source byte
+    Byte 2 -- pad (future expantion)
+    Byte 3 -- version/size byte (upper/lower bits)
+    Byte 4 -- key byte
+    Byte 5 -- start of data region
+    Byte X -- crc (last byte) 
+    ----------------------------------------------------------*/
+    rtn_obj.start_idx[ rtn_obj.num_msg ] = index;
+
+
+    int current_index = index + 3;
+    if( current_index < size )
+        {
+        rtn_obj.msg_size[ rtn_obj.num_msg ] = ( message_array[ current_index ] & SIZE_MASK );
+        }
+
+    current_index = current_index + rtn_obj.msg_size[ rtn_obj.num_msg ] + 1 /* key byte */ ;
+    current_index++; //one more to move into crc spot?
+    if( current_index < size )
+        {
+        rtn_obj.end_idx[ rtn_obj.num_msg ] = current_index;
+        }
+
+
+    //update for the object we just added
+    rtn_obj.num_msg++; 
+
+
+    index++;
+    msg_index++;
+    }
+}

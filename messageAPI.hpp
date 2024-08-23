@@ -23,6 +23,9 @@
 --------------------------------------------------------------------*/
 #define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message  */
 
+#define MAX_MSG_RX ( 10 ) /* min message size = 6 bytes, fifo size = 64 
+                             thus, the maxium msg's in fifo is 10.6 or 
+                             rounded to 10                           */
 /*--------------------------------------------------------------------
                                 TYPES
 --------------------------------------------------------------------*/
@@ -54,6 +57,13 @@ typedef struct                              /* lora message format  */
     } lora_message;
 
 
+typedef struct {
+    std::array<MAX_MSG_RX, rx_message> messages;
+    uint8_t num_messages;
+    std::array<MAX_MSG_RX, message_errors> errors;
+    message_errors global_errors;
+} rx_multi;
+
 typedef uint8_t message_errors;        /* Error Codes                */
 enum 
     {
@@ -71,6 +81,13 @@ enum
                                           interface                  */
     }; 
 
+typedef struct 
+{
+std::array<MAX_MSG_RX, uint8_t> start_idx;
+std::array<MAX_MSG_RX, uint8_t> end_idx;
+std::array<MAX_MSG_RX, uint8_t> message_size;
+uint8_t num_msg;
+} multi_msg_parser;
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
 --------------------------------------------------------------------*/
@@ -100,6 +117,8 @@ class messageInterface
 
         bool get_message( rx_message *message, message_errors& errors );
 
+        rx_multi get_multi_message( void );
+
         void update_key( uint8_t new_key );
 
     private:
@@ -107,6 +126,8 @@ class messageInterface
         uint8_t calculate_crc( uint8_t message_array[], uint8_t size );
 
         lora_message covert_message( uint8_t message_array[], uint8_t size, message_errors& error_ptr );
+
+        multi_msg_parser lora_prepper( uint8_t message_array[], uint8_t size );
 
         uint8_t p_current_key;
 
