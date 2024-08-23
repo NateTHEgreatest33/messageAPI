@@ -241,6 +241,12 @@ bool core::messageInterface::get_message
     message_errors& errors     /* pointer to store errors received  */
     )
 {
+
+/*----------------------------------------------------------
+Add deprication warning to console
+----------------------------------------------------------*/
+c_ref.add_assert( "messageInterface::get_message() is now depricated, use get_multi_message() instead ");
+
 /*----------------------------------------------------------
 Local variables
 ----------------------------------------------------------*/
