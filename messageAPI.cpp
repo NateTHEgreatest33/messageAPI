@@ -573,16 +573,19 @@ uint8_t raw_lora[ MAX_LORA_MSG_SIZE ];      /* array holding return message */
 uint8_t raw_lora_size;                      /* size of return message array */
 lora_errors lora_message_errors;            /* errors from lora comm layer  */
 lora_message formatted_array;               /* message array formated       */  
-
+multi_msg_parser parse_data;
+uint8_t i ;
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
 memset( &raw_lora, 0, sizeof( raw_lora ) );
 memset( &return_msg, 0, sizeof( rx_multi ) );
-
+memset( &parse_data, 0, sizeof( multi_msg_parser ) );
+memset( &formatted_array, 0, sizeof( lora_message ) );
 return_message_size = 0;
 lora_message_errors = RX_TIMEOUT;
 
+//init return_msg to no errors size = 0
 
 
 /*----------------------------------------------------------
@@ -604,100 +607,122 @@ if ( lora_message_errors != RX_NO_ERROR )
     }
 
 /*----------------------------------------------------------
-Convert message
+calculate message index's
 ----------------------------------------------------------*/
-formatted_array = covert_message( return_message, return_message_size, errors );
+parse_data = lora_prepper( raw_lora, raw_lora_size );
 
 /*----------------------------------------------------------
-If errors caused message to not be properly converted, exit
-now to avoid future processing.
+for-each rx'ed messages
 ----------------------------------------------------------*/
-if( errors != MSG_NO_ERROR )
+for( i = 0; i < parse_data.num_msg; i++ )
     {
-    return false;
-    }
+    //clear out formatted array
+    memset( &formatted_array, 0, sizeof( lora_message ) );
 
-/*----------------------------------------------------------
-Calculate and Verify CRC and key
-----------------------------------------------------------*/
-if ( formatted_array.crc != calculate_crc( return_message, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
-    {
-    message->valid = false;
-    errors = MSG_CRC_ERROR;
-    }
-else if ( formatted_array.key != p_current_key )
-    {
-    message->valid = false;
-    errors = MSG_KEY_ERR;
-    }
+    //setup local data 
+    uint8_t local_raw_msg[ MAX_LORA_MSG_SIZE ];
+    memcpy( &message_array, raw_lora[ parse_data.start_idx[i] ], parse_data.msg_size[i] ); 
+    message_errors local_errors = parse_data.errors[i];
+    uint8_t local_size          = parse_data.msg_size[i];
+    rx_message local_msg;
 
-/*----------------------------------------------------------
-Update rx_message
-----------------------------------------------------------*/
-message->size           = formatted_array.size;
-memcpy( message->message, formatted_array.message, formatted_array.size );
-
-/*----------------------------------------------------------
-if module destination is all, overwrite destination as self.
-
-This solution was implemented to allow for NUM_OF_MODULE
-checks 
-----------------------------------------------------------*/
-if( formatted_array.destination == MODULE_ALL )
-    {
-    formatted_array.destination = current_location;
-    }
-
-
-/*----------------------------------------------------------
-Verify destination is a valid location
-----------------------------------------------------------*/
-if( formatted_array.destination < NUM_OF_MODULES )
-    {
+    //convert
+    formatted_array = covert_message( local_raw_msg, local_size, local_errors );
+    
     /*----------------------------------------------------------
-    Verify destination is our modules
+    If errors caused message to not be properly converted, skip
+    now to avoid future processing.
     ----------------------------------------------------------*/
-    if( formatted_array.destination == current_location )
+    if( local_errors != MSG_NO_ERROR )
+        {
+        return_msg.errors[i] = local_errors;
+        continue;
+        }
+
+
+    /*----------------------------------------------------------
+    Calculate and Verify CRC and key
+    ----------------------------------------------------------*/
+    if ( formatted_array.crc != calculate_crc( local_raw_msg, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
+        {
+        local_msg.valid = false;
+        local_errors = MSG_CRC_ERROR;
+        }
+    else if ( formatted_array.key != p_current_key )
+        {
+        local_msg.valid = false;
+        local_errors = MSG_KEY_ERR;
+        }
+
+    /*----------------------------------------------------------
+    Update rx_message
+    ----------------------------------------------------------*/
+    local_msg.size           = formatted_array.size;
+    memcpy( local_msg.message, formatted_array.message, formatted_array.size );
+
+    /*----------------------------------------------------------
+    if module destination is all, overwrite destination as self.
+
+    This solution was implemented to allow for NUM_OF_MODULE
+    checks 
+    ----------------------------------------------------------*/
+    if( formatted_array.destination == MODULE_ALL )
+        {
+        formatted_array.destination = current_location;
+        }
+
+    /*----------------------------------------------------------
+    Verify destination is a valid location
+    ----------------------------------------------------------*/
+    if( formatted_array.destination < NUM_OF_MODULES )
         {
         /*----------------------------------------------------------
-        Verify source location
+        Verify destination is our modules
         ----------------------------------------------------------*/
-        if( formatted_array.source < NUM_OF_MODULES )
+        if( formatted_array.destination == current_location )
             {
-            message->source = ( location ) formatted_array.source;
+            /*----------------------------------------------------------
+            Verify source location
+            ----------------------------------------------------------*/
+            if( formatted_array.source < NUM_OF_MODULES )
+                {
+                local_msg.source = ( location ) formatted_array.source;
+                }
+            else
+                {
+                local_msg.source = INVALID_LOCATION;
+                }
+
+            /*----------------------------------------------------------
+            Verify key
+            ----------------------------------------------------------*/
+            if ( p_current_key != formatted_array.key && local_errors == MSG_NO_ERROR )
+                {
+                local_errors = MSG_KEY_ERR;
+                }
+
             }
         else
             {
-            message->source = INVALID_LOCATION;
+            /*----------------------------------------------------------
+            Message valid but not current location
+            ----------------------------------------------------------*/
+            continue; //we should process next message                        <---- need to verify this works
             }
-
-        /*----------------------------------------------------------
-        Verify key
-        ----------------------------------------------------------*/
-        if ( p_current_key != formatted_array.key && errors == MSG_NO_ERROR )
-            {
-            errors = MSG_KEY_ERR;
-            }
-
-        return true;
         }
     else
         {
-        /*----------------------------------------------------------
-        Message valid but not current location
-        ----------------------------------------------------------*/
-        return false;
+        /*----------------------------
+        sys_def.h is not up to date
+        ----------------------------*/
+        local_errors = MSG_INVALID_HEADER;
         }
-    }
-else
-    {
-    /*----------------------------
-    sys_def.h is not up to date
-    ----------------------------*/
-    errors = MSG_INVALID_HEADER;
-    return false;
-    }
 
+    //update final return variable
+    return_msg.messages[i] = local_msg;
+    return_msg.errors[i]   = local_errors;
+    return_msg.num_messages++;
+    }
 
 /*----------------------------------------------------------
 return object
@@ -707,7 +732,7 @@ return return_msg;
 } /*  core::messageInterface::get_multi_message() */
 
 
-multi_msg_parser core::messageInterface::lora_prepper( uint8_t message_array[], uint8_t size )
+multi_msg_parser core::messageInterface::lora_prepper( const uint8_t message_array[], const uint8_t size )
 {
 uin8_t index = 0;
 multi_msg_parser rtn_obj;
@@ -740,12 +765,15 @@ while( index < size )
         continue;
         }
 
-    //put size data into size variable
-    rtn_obj.msg_size[ msg_index ] = ( SIZE_BYTE & message_array[ index ] );
+    //calculate data size
+    uint8_t data_size = ( SIZE_BYTE & message_array[ index ] );
 
+    // +6 for header information
+    rtn_obj.msg_size[ msg_index ] = data_size + 6;
+    
     //use size to calculate end index
     // +3 skip key byte and enter data, +size to skip data portion and enter crc byte
-    index += 2 + rtn_obj.msg_size[ msg_index ];
+    index += 2 + data_size;
 
     if( index <= size )
         {

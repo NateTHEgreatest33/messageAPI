@@ -86,6 +86,7 @@ typedef struct
 std::array<MAX_MSG_RX, uint8_t> start_idx;
 std::array<MAX_MSG_RX, uint8_t> end_idx;
 std::array<MAX_MSG_RX, uint8_t> msg_size;
+std::array<MAX_MSG_RX, message_errors> errors;
 uint8_t num_msg;
 } multi_msg_parser;
 /*--------------------------------------------------------------------
@@ -127,7 +128,7 @@ class messageInterface
 
         lora_message covert_message( uint8_t message_array[], uint8_t size, message_errors& error_ptr );
 
-        multi_msg_parser lora_prepper( uint8_t message_array[], uint8_t size );
+        multi_msg_parser lora_prepper( const uint8_t message_array[], const uint8_t size );
 
         uint8_t p_current_key;
 
