@@ -23,6 +23,7 @@
 --------------------------------------------------------------------*/
 #define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message  */
 
+
 #define MAX_MSG_RX ( 10 ) /* min message size = 6 bytes, fifo size = 64 
                              thus, the maxium msg's in fifo is 10.6 or 
                              rounded to 10                           */

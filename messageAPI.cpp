@@ -23,7 +23,7 @@
 /*--------------------------------------------------------------------
                           LITERAL CONSTANTS
 --------------------------------------------------------------------*/
-#define API_VERSION         ( 1 )       /* message API v1                  */
+#define API_VERSION         ( 2 )       /* message API v2                  */
 
 #define MAXIMUM_MSG_LENGTH  ( 10 )      /* maximum size of message data    */
 
@@ -575,45 +575,61 @@ rx_multi core::messageInterface::get_multi_message
 Local variables
 ----------------------------------------------------------*/
 rx_multi return_msg;                        /* object holding return message */
-uint8_t raw_lora[ MAX_LORA_MSG_SIZE ];      /* array holding return message */
-uint8_t raw_lora_size;                      /* size of return message array */
-lora_errors lora_message_errors;            /* errors from lora comm layer  */
-lora_message formatted_array;               /* message array formated       */  
-multi_msg_parser parse_data;
-uint8_t i ;
+uint8_t return_msg_idx;                     /* return message index          */
+uint8_t raw_lora[ MAX_LORA_MSG_SIZE ];      /* array holding raw lora data   */
+uint8_t raw_lora_size;                      /* size of raw lora data         */
+lora_errors lora_message_errors;            /* errors from lora comm layer   */
+lora_message formatted_array;               /* message array formated        */  
+multi_msg_parser parse_data;                /* parsed lora index data        */
+uint8_t i;                                  /* index                         */
+boolean message_rxed;                       /* message received              */
+uint8_t local_raw_msg[ MAX_LORA_MSG_SIZE ]; /* raw single lora msg data      */
+message_errors local_errors                 /* single lora msg errors        */
+uint8_t local_size                          /* single lora msg size          */
+rx_message local_msg;                       /* single message rx struct      */
 /*----------------------------------------------------------
 Initilize local variables
 ----------------------------------------------------------*/
-memset( &raw_lora, 0, sizeof( raw_lora ) );
-memset( &return_msg, 0, sizeof( rx_multi ) );
-memset( &parse_data, 0, sizeof( multi_msg_parser ) );
-memset( &formatted_array, 0, sizeof( lora_message ) );
+memset( &raw_lora,        0, (sizeof(uint8_t)*MAX_LORA_MSG_SIZE) );
+memset( &local_raw_msg,   0, (sizeof(uint8_t)*MAX_LORA_MSG_SIZE) );
+memset( &return_msg,      0, sizeof( rx_multi )         );
+memset( &parse_data,      0, sizeof( multi_msg_parser ) );
+memset( &formatted_array, 0, sizeof( lora_message )     );
+memset( &local_msg,       0, sizeof( rx_message )       );
+
 return_message_size = 0;
+return_msg_idx      = 0;
+raw_lora_size       = 0;
+i                   = 0;
+local_size          = 0;
+local_errors        = MSG_NO_ERROR;
 lora_message_errors = RX_TIMEOUT;
-
-//init return_msg to no errors size = 0
-
+message_rxed        = false;
 
 /*----------------------------------------------------------
-If no new message, exit 
+determine if message was rx'ed and get lora errors
 ----------------------------------------------------------*/
-if( !p_lora.get_message( raw_lora, MAX_LORA_MSG_SIZE, &raw_lora_size, &lora_message_errors ) )
+message_rxed = p_lora.get_message( raw_lora, MAX_LORA_MSG_SIZE, &raw_lora_size, &lora_message_errors );
+
+/*----------------------------------------------------------
+if issues with lora_get_message, update global error
+----------------------------------------------------------*/
+if ( lora_message_errors != RX_NO_ERROR )
+    {
+    return_msg.global_errors = MSG_HW_ERROR;
+    }
+
+/*----------------------------------------------------------
+if no message rx'ed or we have lora errors, exit
+----------------------------------------------------------*/
+if( return_msg.global_errors != MSG_NO_ERROR || return_msg.num_messages == 0 )
     {
     return return_msg;
     }
 
 /*----------------------------------------------------------
-if issues with lora_get_message, update global error
-and return false
-----------------------------------------------------------*/
-if ( lora_message_errors != RX_NO_ERROR )
-    {
-    return_msg.global_errors = MSG_HW_ERROR;
-    return rx_multi;
-    }
-
-/*----------------------------------------------------------
-calculate message index's
+Parse through raw lora data and determine how many messages
+and their sizes
 ----------------------------------------------------------*/
 parse_data = lora_prepper( raw_lora, raw_lora_size );
 
@@ -622,17 +638,22 @@ for-each rx'ed messages
 ----------------------------------------------------------*/
 for( i = 0; i < parse_data.num_msg; i++ )
     {
-    //clear out formatted array
+    /*------------------------------------------------------
+    cleardata for each message
+    ------------------------------------------------------*/
     memset( &formatted_array, 0, sizeof( lora_message ) );
+    memset( &local_msg, 0, sizeof(rx_message) ); 
 
-    //setup local data 
-    uint8_t local_raw_msg[ MAX_LORA_MSG_SIZE ];
+    /*------------------------------------------------------
+    init data for current rx message
+    ------------------------------------------------------*/
     memcpy( &message_array, raw_lora[ parse_data.start_idx[i] ], parse_data.msg_size[i] ); 
-    message_errors local_errors = parse_data.errors[i];
-    uint8_t local_size          = parse_data.msg_size[i];
-    rx_message local_msg;
+    local_errors = parse_data.errors[i];
+    local_size   = parse_data.msg_size[i];
 
-    //convert
+    /*------------------------------------------------------
+    convert current message into formatted struct
+    ------------------------------------------------------*/
     formatted_array = covert_message( local_raw_msg, local_size, local_errors );
     
     /*----------------------------------------------------------
@@ -641,10 +662,10 @@ for( i = 0; i < parse_data.num_msg; i++ )
     ----------------------------------------------------------*/
     if( local_errors != MSG_NO_ERROR )
         {
-        return_msg.errors[i] = local_errors;
+        return_msg.errors[return_msg_idx] = local_errors;
+        return_msg_idx++;
         continue;
         }
-
 
     /*----------------------------------------------------------
     Calculate and Verify CRC and key
@@ -713,7 +734,7 @@ for( i = 0; i < parse_data.num_msg; i++ )
             /*----------------------------------------------------------
             Message valid but not current location
             ----------------------------------------------------------*/
-            continue; //we should process next message                        <---- need to verify this works
+            continue;
             }
         }
     else
@@ -724,9 +745,13 @@ for( i = 0; i < parse_data.num_msg; i++ )
         local_errors = MSG_INVALID_HEADER;
         }
 
-    //update final return variable
-    return_msg.messages[i] = local_msg;
-    return_msg.errors[i]   = local_errors;
+    /*----------------------------------------------------------
+    Place final message within return buffer and go onto next 
+    item in queue
+    ----------------------------------------------------------*/
+    return_msg.messages[return_msg_idx] = local_msg;
+    return_msg.errors[return_msg_idx]   = local_errors;
+    return_msg_idx++;
     return_msg.num_messages++;
     }
 
