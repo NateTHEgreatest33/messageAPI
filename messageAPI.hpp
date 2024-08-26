@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdio.h> 
 #include <stdbool.h>
+#include <array>
 
 #include "sys_def.h"
 #include "LoraAPI.hpp"
@@ -24,8 +25,8 @@
 #define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message  */
 
 
-#define MAX_MSG_RX ( 10 ) /* min message size = 6 bytes, fifo size = 64 
-                             thus, the maxium msg's in fifo is 10.6 or 
+#define MAX_MSG_RX ( 10 ) /* min message size = 6 bytes, fifo size = 64, 
+                             thus, the maxium msgs in fifo is 10.6 or 
                              rounded to 10                           */
 /*--------------------------------------------------------------------
                                 TYPES
@@ -58,13 +59,6 @@ typedef struct                              /* lora message format  */
     } lora_message;
 
 
-typedef struct {
-    std::array<MAX_MSG_RX, rx_message> messages;
-    uint8_t num_messages;
-    std::array<MAX_MSG_RX, message_errors> errors;
-    message_errors global_errors;
-} rx_multi;
-
 typedef uint8_t message_errors;        /* Error Codes                */
 enum 
     {
@@ -83,13 +77,20 @@ enum
     }; 
 
 typedef struct 
-{
-std::array<MAX_MSG_RX, uint8_t> start_idx;
-std::array<MAX_MSG_RX, uint8_t> end_idx;
-std::array<MAX_MSG_RX, uint8_t> msg_size;
-std::array<MAX_MSG_RX, message_errors> errors;
-uint8_t num_msg;
-} multi_msg_parser;
+    {
+    std::array<rx_message, MAX_MSG_RX> messages;
+    uint8_t num_messages;
+    std::array<message_errors, MAX_MSG_RX> errors;
+    message_errors global_errors;
+    } rx_multi;
+typedef struct 
+    {
+    std::array< uint8_t, MAX_MSG_RX > start_idx;
+    std::array< uint8_t, MAX_MSG_RX > end_idx;
+    std::array< uint8_t, MAX_MSG_RX > msg_size;
+    std::array< message_errors, MAX_MSG_RX > errors;
+    uint8_t num_msg;
+    } multi_msg_parser;
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
 --------------------------------------------------------------------*/

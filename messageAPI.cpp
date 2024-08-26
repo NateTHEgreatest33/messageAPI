@@ -245,7 +245,7 @@ bool core::messageInterface::get_message
 /*----------------------------------------------------------
 Add deprication warning to console
 ----------------------------------------------------------*/
-c_ref.add_assert( "messageInterface::get_message() is now depricated, use get_multi_message() instead ");
+p_console.add_assert( "messageInterface::get_message() is now depricated, use get_multi_message() instead ");
 
 /*----------------------------------------------------------
 Local variables
@@ -582,10 +582,11 @@ lora_errors lora_message_errors;            /* errors from lora comm layer   */
 lora_message formatted_array;               /* message array formated        */  
 multi_msg_parser parse_data;                /* parsed lora index data        */
 uint8_t i;                                  /* index                         */
-boolean message_rxed;                       /* message received              */
+uint8_t return_message_size;                /* rtn msg size                  */
+bool message_rxed;                          /* message received              */
 uint8_t local_raw_msg[ MAX_LORA_MSG_SIZE ]; /* raw single lora msg data      */
-message_errors local_errors                 /* single lora msg errors        */
-uint8_t local_size                          /* single lora msg size          */
+message_errors local_errors;                /* single lora msg errors        */
+uint8_t local_size;                         /* single lora msg size          */
 rx_message local_msg;                       /* single message rx struct      */
 /*----------------------------------------------------------
 Initilize local variables
@@ -647,7 +648,7 @@ for( i = 0; i < parse_data.num_msg; i++ )
     /*------------------------------------------------------
     init data for current rx message
     ------------------------------------------------------*/
-    memcpy( &message_array, raw_lora[ parse_data.start_idx[i] ], parse_data.msg_size[i] ); 
+    memcpy( &local_msg, &(raw_lora[ parse_data.start_idx[i] ]), parse_data.msg_size[i] ); 
     local_errors = parse_data.errors[i];
     local_size   = parse_data.msg_size[i];
 
@@ -765,9 +766,9 @@ return return_msg;
 
 multi_msg_parser core::messageInterface::lora_prepper( const uint8_t message_array[], const uint8_t size )
 {
-uin8_t index = 0;
+uint8_t index = 0;
 multi_msg_parser rtn_obj;
-uin8_t msg_index = 0;
+uint8_t msg_index = 0;
 uint8_t msg_size = 0;
 
 while( index < size )
