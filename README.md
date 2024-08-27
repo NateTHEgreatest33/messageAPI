@@ -1,21 +1,5 @@
-### TODO LIST:
-- [x] port orginal code
-- [x] REMOVED: INST parser and # of messages return instead of T/F
-- [x] create better way of defining modules? maybe an add module function to create a dynamic array of modules?
-- [x] LoRa read/write working
-- [x] LoRa TX/RX working
-- [x] get verified working
-- [x] create stable v1.0
-- [ ] implement current module into code + remove src/dest from tx/rx messages
-- [ ] auto key update (may utilize pad)
-- [ ] encryption + private/public key generation
-- [x] python rPi companion framework
-- [ ] module test framework
-- [x] system test framework using python test bench
-- [ ] implement v1.1
-
 # messageAPI
-messaging API built ontop of the loRa API
+messaging API built ontop of the loRa API -- Version 2.0
 
 
 Message format:
@@ -36,6 +20,8 @@ Destination | Source | pad (future updates) | version/ data size | key | data | 
 
 How to use the message API:
 
+For the most up to date documentation please refer to the [Message API ICD](https://docs.google.com/document/d/130JMIxLKgSH4ArH4278pt9nv2rzlUnXZ5191O4RaR6M/edit#heading=h.vb53gr77h2fj)
+
 __Setup:__
 
 1. Modules must be defined with the location enum as follows:
@@ -54,16 +40,10 @@ enum
 ```
 const location current_location = EXAMPLE_MODULE1;
 ```
-3. LoRa Pin and SPI setup defintions are setup using the type lora_config
-```
-typedef struct 
-    {
-    uint32_t SSI_BASE;                    /* SPI interface selected */
-    CS_port SSI_PORT;                     /* SPI pin selected       */
-    uint8_t  SSI_PIN;                     /* SPI port selected       */             
-    } lora_config;                        /* SPI interface info     */
-```
+3. The LoRa API needs to be configured prior to seting up MessageAPI
+
 4. The data types used for transfer are of rx_message and tx_message type
+> :warning: **Version 2.0 update **: rx message format was updated in version 2.0 to allow for multi-message rx per transaction. The single rx message format is now depricated!
 ```
 typedef struct                              /* rx message format    */
     {
@@ -79,32 +59,37 @@ typedef struct                              /* tx message format    */
     uint8_t size;                           /* size of message[]    */
     uint8_t message[ MAX_MSG_LENGTH ];      /* data buffer          */
     } tx_message;
+
+typedef struct 
+    {
+    std::array<rx_message, MAX_MSG_RX> messages; /* rx messages     */
+    uint8_t num_messages;                        /* number of msgs  */
+    std::array<message_errors, MAX_MSG_RX> errors; /* errors/msg    */
+    message_errors global_errors;                /* global errors   */
+    } rx_multi;
 ```
 
 
 __Usage:__
 
-1. Before any communication can occour, the LoRa transciver must be setup to receive messages. this is done using the init function. The data passed in is of lora_config type and this function returns data type lora_errors
+1. Before any communication can occour, the LoRa transciver must be setup to receive messages. this is done via the constructor of loraAPI
 ```
-lora_errors init_message
-    (
-    lora_config config_data                  /* SPI Interface info  */
-    );
+core::loraInterface loRa( spi_default ,console );
+core::messageInterface messageAPI( loRa, console );
 ```
 
-2. To send a message use send_message() which takes in a tx_message and returns an error variable of type lora_errors
+2. To send a message use send_message() which takes in a tx_message and returns T/F if it was successful
 ```
-lora_errors send_message
+bool core::messageInterface::send_message
     (
     tx_message message                           /* message to send */
     );
 ```
-3. To check and receive a message use get_message(). this returns a boolean true or false depending if a message has been recived. if true, the message will be placed into the providied rx_message variable. The errors variable can be updated even if no message is recived (ie. issues w/ SPI or message sizing).
+3. To check and receive a message use get_multi_message(). this returns an object of type rx_multi which has a variabkle num_messages to determine how many messages were rx'ed.
 ```
-bool get_message
+rx_multi core::messageInterface::get_multi_message
     (
-    rx_message *message,       /* pointer to store message received */
-    lora_errors *errors        /* pointer to store errors received  */
+    void
     );
 ```
 
@@ -112,7 +97,7 @@ __Additional Notes:__
 
 1. messageAPI conatins built in crc checking and updating but does not automate updating the message key (byte 4). the function update_key is provided to update the key which is compared agasnt incoming messages.
 ```
-void update_key
+void core::messageInterface::update_key
     (
     uint8_t new_key                                      /* new key */
     );
