@@ -78,10 +78,10 @@ enum
 
 typedef struct 
     {
-    std::array<rx_message, MAX_MSG_RX> messages;
-    uint8_t num_messages;
-    std::array<message_errors, MAX_MSG_RX> errors;
-    message_errors global_errors;
+    std::array<rx_message, MAX_MSG_RX> messages; /* rx messages     */
+    uint8_t num_messages;                        /* number of msgs  */
+    std::array<message_errors, MAX_MSG_RX> errors; /* errors/msg    */
+    message_errors global_errors;                /* global errors   */
     } rx_multi;
 typedef struct 
     {
