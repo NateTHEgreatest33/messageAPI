@@ -47,6 +47,8 @@
 
 #define HEADER_BYTE_COUNT   ( 5 )       /* count of non CRC header bytes   */
 
+#define NON_DATA_BYTE_COUNT ( 6 )       /* count of non data bytes         */
+
 
 /*--------------------------------------------------------------------
                                 TYPES
@@ -559,11 +561,11 @@ core::messageInterface::~messageInterface
 *        core::messageInterface::get_multi_message
 *
 *   DESCRIPTION:
-*       procedure for receiving messages in messageAPI format 
+*       procedure for receiving multiple messages in messageAPI format 
 *       through LoRa
 *
 *   RETURN:
-*       T/F message received y/n
+*       rx_multi - list of received messages
 *
 *********************************************************************/
 rx_multi core::messageInterface::get_multi_message
@@ -623,7 +625,7 @@ if ( lora_message_errors != RX_NO_ERROR )
 /*----------------------------------------------------------
 if no message rx'ed or we have lora errors, exit
 ----------------------------------------------------------*/
-if( return_msg.global_errors != MSG_NO_ERROR || return_msg.num_messages == 0 )
+if( return_msg.global_errors != MSG_NO_ERROR || message_rxed == false )
     {
     return return_msg;
     }
@@ -763,14 +765,54 @@ return return_msg;
 
 } /*  core::messageInterface::get_multi_message() */
 
-
-multi_msg_parser core::messageInterface::lora_prepper( const uint8_t message_array[], const uint8_t size )
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*        core::messageInterface::lora_prepper
+*
+*   DESCRIPTION:
+*       procedure for parsing a raw lora byte stream and determining
+*       how many messages it contains
+*
+*   RETURN:
+*       multi_msg_parser - list of received message indexs within
+*       a raw lora stream
+*
+*********************************************************************/
+multi_msg_parser core::messageInterface::lora_prepper
+    ( 
+    const uint8_t message_array[], /* raw lora data stream */
+    const uint8_t size             /* message_array size   */
+    )
 {
-uint8_t index = 0;
-multi_msg_parser rtn_obj;
-uint8_t msg_index = 0;
-uint8_t msg_size = 0;
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+uint8_t index;            /* index                        */
+multi_msg_parser rtn_obj; /* return object                */
+uint8_t msg_index;        /* return object index          */
+uint8_t data_size;        /* current message data size    */
 
+/*----------------------------------------------------------
+Local definitions
+----------------------------------------------------------*/
+#define JUMP_TO_SIZE_BYTE ( SIZE_BYTE ) /* jump from byte 0 
+                                           to byte 3      */
+#define JUMP_TO_DATA_BYTE  ( 2 )        /* jump from byte 3 
+                                           to byte 5      */
+
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+index     = 0;
+msg_index = 0;
+data_size = 0;
+memset( &rtn_obj, 0, sizeof( multi_msg_parser ) );
+
+
+/*----------------------------------------------------------
+Parse through lora data stream
+----------------------------------------------------------*/
 while( index < size )
     {
     msg_index = rtn_obj.num_msg;
@@ -786,44 +828,61 @@ while( index < size )
     ----------------------------------------------------------*/
     rtn_obj.start_idx[ msg_index ] = index;
 
+    /*----------------------------------------------------------
+    skip ahead 3 bytes to where sizing data is stored
+    ----------------------------------------------------------*/
+    index += JUMP_TO_SIZE_BYTE;
 
-    //skip to byte 3 (sizing data)
-    index += 3;
-
-    //make sure we haven't overrun buffer
+    /*----------------------------------------------------------
+    verify we havent overrun the buffer
+    ----------------------------------------------------------*/
     if( index <= size )
         {
         rtn_obj.errors[ msg_index ] =  MSG_SIZING;
         continue;
         }
 
-    //calculate data size
-    uint8_t data_size = ( SIZE_BYTE & message_array[ index ] );
+    /*----------------------------------------------------------
+    Parse data size
+    ----------------------------------------------------------*/
+    data_size = ( SIZE_MASK & message_array[ index ] );
 
-    // +6 for header information
-    rtn_obj.msg_size[ msg_index ] = data_size + 6;
+    /*----------------------------------------------------------
+    Update object size using header byte count + data size
+    ----------------------------------------------------------*/
+    rtn_obj.msg_size[ msg_index ] = data_size + NON_DATA_BYTE_COUNT;
     
-    //use size to calculate end index
-    // +3 skip key byte and enter data, +size to skip data portion and enter crc byte
-    index += 2 + data_size;
+    /*----------------------------------------------------------
+    Jump to CRC byte
+    ----------------------------------------------------------*/
+    index += ( JUMP_TO_DATA_BYTE + data_size );
 
+    /*----------------------------------------------------------
+    verify we havent overrun the buffer
+    ----------------------------------------------------------*/
     if( index <= size )
         {
         rtn_obj.errors[ msg_index ] = MSG_SIZING;
         continue;
         }
 
-    //update end index
+    /*----------------------------------------------------------
+    Update message end index and error variable
+    ----------------------------------------------------------*/
     rtn_obj.end_idx[ msg_index ] = index;
+    rtn_obj.errors[ msg_index ]  = MSG_NO_ERROR;
 
-    //update errors
-    rtn_obj.errors[ msg_index ] = MSG_NO_ERROR;
-
-    //update for the object we just added
+    /*----------------------------------------------------------
+    Update message counter
+    ----------------------------------------------------------*/
     rtn_obj.num_msg++; 
-    index++; //enter next location of message_array
+
+    /*----------------------------------------------------------
+    Update index to begin parsing the next message
+    ----------------------------------------------------------*/
+    index++;
     }
 
 
 return rtn_obj;
-}
+} /* core::messageInterface::lora_prepper() */
