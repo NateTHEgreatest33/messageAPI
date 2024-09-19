@@ -836,7 +836,7 @@ while( index < size )
     /*----------------------------------------------------------
     verify we havent overrun the buffer
     ----------------------------------------------------------*/
-    if( index <= size )
+    if( index >= size )
         {
         rtn_obj.errors[ msg_index ] =  MSG_SIZING;
         continue;
@@ -860,7 +860,7 @@ while( index < size )
     /*----------------------------------------------------------
     verify we havent overrun the buffer
     ----------------------------------------------------------*/
-    if( index <= size )
+    if( index >= size )
         {
         rtn_obj.errors[ msg_index ] = MSG_SIZING;
         continue;
