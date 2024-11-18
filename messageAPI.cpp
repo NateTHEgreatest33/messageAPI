@@ -646,11 +646,12 @@ for( i = 0; i < parse_data.num_msg; i++ )
     ------------------------------------------------------*/
     memset( &formatted_array, 0, sizeof( lora_message ) );
     memset( &local_msg, 0, sizeof(rx_message) ); 
+    memset( &local_raw_msg, 0, (sizeof(uint8_t)*MAX_LORA_MSG_SIZE) ); 
 
     /*------------------------------------------------------
     init data for current rx message
     ------------------------------------------------------*/
-    memcpy( &local_msg, &(raw_lora[ parse_data.start_idx[i] ]), parse_data.msg_size[i] ); 
+    memcpy( &local_raw_msg, &(raw_lora[ parse_data.start_idx[i] ]), parse_data.msg_size[i] );  //fix here
     local_errors = parse_data.errors[i];
     local_size   = parse_data.msg_size[i];
 
