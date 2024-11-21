@@ -669,11 +669,13 @@ for( i = 0; i < parse_data.num_msg; i++ )
     
     /*----------------------------------------------------------
     If errors caused message to not be properly converted, skip
-    now to avoid future processing.
+    now to avoid future processing. However still inform user
+    that an errored message has been rxed
     ----------------------------------------------------------*/
     if( local_errors != MSG_NO_ERROR )
         {
         return_msg.errors[return_msg_idx] = local_errors;
+        return_msg.num_messages++;
         return_msg_idx++;
         continue;
         }
