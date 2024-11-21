@@ -637,6 +637,14 @@ and their sizes
 parse_data = lora_prepper( raw_lora, raw_lora_size );
 
 /*----------------------------------------------------------
+Update global errors with any found during parsing
+----------------------------------------------------------*/
+if( parse_data.errors != MSG_NO_ERROR )
+    {
+    return_msg.global_errors = parse_data.errors;
+    }
+
+/*----------------------------------------------------------
 for-each rx'ed messages
 ----------------------------------------------------------*/
 for( i = 0; i < parse_data.num_msg; i++ )
@@ -651,8 +659,7 @@ for( i = 0; i < parse_data.num_msg; i++ )
     /*------------------------------------------------------
     init data for current rx message
     ------------------------------------------------------*/
-    memcpy( &local_raw_msg, &(raw_lora[ parse_data.start_idx[i] ]), parse_data.msg_size[i] );  //fix here
-    local_errors = parse_data.errors[i];
+    memcpy( &local_raw_msg, &(raw_lora[ parse_data.start_idx[i] ]), parse_data.msg_size[i] ); 
     local_size   = parse_data.msg_size[i];
 
     /*------------------------------------------------------
@@ -809,7 +816,7 @@ index     = 0;
 msg_index = 0;
 data_size = 0;
 memset( &rtn_obj, 0, sizeof( multi_msg_parser ) );
-
+rtn_obj.errors = MSG_NO_ERROR;
 
 /*----------------------------------------------------------
 Parse through lora data stream
@@ -839,14 +846,23 @@ while( index < size )
     ----------------------------------------------------------*/
     if( index >= size )
         {
-        rtn_obj.errors[ msg_index ] =  MSG_SIZING;
-        continue;
+        rtn_obj.errors = MSG_SIZING;
+        break;
         }
 
     /*----------------------------------------------------------
     Parse data size
     ----------------------------------------------------------*/
     data_size = ( SIZE_MASK & message_array[ index ] );
+
+    /*----------------------------------------------------------
+    Verify data size is within reason. If not, exit processing
+    ----------------------------------------------------------*/
+    if( data_size > MAXIMUM_MSG_LENGTH )
+        {
+        rtn_obj.errors = MSG_INVALID_HEADER;
+        break;
+        }
 
     /*----------------------------------------------------------
     Update object size using header byte count + data size
@@ -863,15 +879,14 @@ while( index < size )
     ----------------------------------------------------------*/
     if( index >= size )
         {
-        rtn_obj.errors[ msg_index ] = MSG_SIZING;
-        continue;
+        rtn_obj.errors = MSG_SIZING;
+        break;
         }
 
     /*----------------------------------------------------------
-    Update message end index and error variable
+    Update message end index
     ----------------------------------------------------------*/
     rtn_obj.end_idx[ msg_index ] = index;
-    rtn_obj.errors[ msg_index ]  = MSG_NO_ERROR;
 
     /*----------------------------------------------------------
     Update message counter

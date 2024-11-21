@@ -89,8 +89,7 @@ typedef struct                           /* mutli message parser data */
     std::array< uint8_t, MAX_MSG_RX > start_idx; /* message[i] index */
     std::array< uint8_t, MAX_MSG_RX > end_idx;   /* message[i] index */
     std::array< uint8_t, MAX_MSG_RX > msg_size;  /* message[i] size  */
-    std::array< message_errors, MAX_MSG_RX > errors; /* message[i] 
-                                                        errors       */
+    message_errors errors;                       /* errors           */
     uint8_t num_msg;                             /* number of msg    */
     } multi_msg_parser;
 /*--------------------------------------------------------------------
