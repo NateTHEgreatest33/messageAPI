@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdio.h> 
 #include <stdbool.h>
+#include <array>
 
 #include "sys_def.h"
 #include "LoraAPI.hpp"
@@ -23,6 +24,10 @@
 --------------------------------------------------------------------*/
 #define MAX_MSG_LENGTH      ( 10 )      /* maximum size of message  */
 
+
+#define MAX_MSG_RX ( 10 ) /* min message size = 6 bytes, fifo size = 64, 
+                             thus, the maxium msgs in fifo is 10.6 or 
+                             rounded to 10                           */
 /*--------------------------------------------------------------------
                                 TYPES
 --------------------------------------------------------------------*/
@@ -71,6 +76,22 @@ enum
                                           interface                  */
     }; 
 
+typedef struct                          /* rx (multi) message format */
+    {
+    std::array<rx_message, MAX_MSG_RX> messages; /* rx messages     */
+    uint8_t num_messages;                        /* number of msgs  */
+    std::array<message_errors, MAX_MSG_RX> errors; /* errors/msg    */
+    message_errors global_errors;                /* global errors   */
+    } rx_multi;
+
+typedef struct                           /* mutli message parser data */
+    {
+    std::array< uint8_t, MAX_MSG_RX > start_idx; /* message[i] index */
+    std::array< uint8_t, MAX_MSG_RX > end_idx;   /* message[i] index */
+    std::array< uint8_t, MAX_MSG_RX > msg_size;  /* message[i] size  */
+    message_errors errors;                       /* errors           */
+    uint8_t num_msg;                             /* number of msg    */
+    } multi_msg_parser;
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
 --------------------------------------------------------------------*/
@@ -100,6 +121,8 @@ class messageInterface
 
         bool get_message( rx_message *message, message_errors& errors );
 
+        rx_multi get_multi_message( void );
+
         void update_key( uint8_t new_key );
 
     private:
@@ -107,6 +130,8 @@ class messageInterface
         uint8_t calculate_crc( uint8_t message_array[], uint8_t size );
 
         lora_message covert_message( uint8_t message_array[], uint8_t size, message_errors& error_ptr );
+
+        multi_msg_parser lora_prepper( const uint8_t message_array[], const uint8_t size );
 
         uint8_t p_current_key;
 

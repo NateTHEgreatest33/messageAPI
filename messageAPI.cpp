@@ -23,7 +23,7 @@
 /*--------------------------------------------------------------------
                           LITERAL CONSTANTS
 --------------------------------------------------------------------*/
-#define API_VERSION         ( 1 )       /* message API v1                  */
+#define API_VERSION         ( 2 )       /* message API v2                  */
 
 #define MAXIMUM_MSG_LENGTH  ( 10 )      /* maximum size of message data    */
 
@@ -46,6 +46,9 @@
 #define DATA_START_BYTE     ( 5 )       /* data byte(s) array start index  */
 
 #define HEADER_BYTE_COUNT   ( 5 )       /* count of non CRC header bytes   */
+
+#define NON_DATA_BYTE_COUNT ( 6 )       /* count of non data bytes         */
+
 
 /*--------------------------------------------------------------------
                                 TYPES
@@ -240,6 +243,12 @@ bool core::messageInterface::get_message
     message_errors& errors     /* pointer to store errors received  */
     )
 {
+
+/*----------------------------------------------------------
+Add deprication warning to console
+----------------------------------------------------------*/
+p_console.add_assert( "messageInterface::get_message() is now depricated, use get_multi_message() instead ");
+
 /*----------------------------------------------------------
 Local variables
 ----------------------------------------------------------*/
@@ -543,3 +552,355 @@ core::messageInterface::~messageInterface
 {
 
 } /* core::messageInterface::~messageInterface() */
+
+
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*        core::messageInterface::get_multi_message
+*
+*   DESCRIPTION:
+*       procedure for receiving multiple messages in messageAPI format 
+*       through LoRa
+*
+*   RETURN:
+*       rx_multi - list of received messages
+*
+*********************************************************************/
+rx_multi core::messageInterface::get_multi_message
+    (
+    void
+    )
+{
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+rx_multi return_msg;                        /* object holding return message */
+uint8_t return_msg_idx;                     /* return message index          */
+uint8_t raw_lora[ MAX_LORA_MSG_SIZE ];      /* array holding raw lora data   */
+uint8_t raw_lora_size;                      /* size of raw lora data         */
+lora_errors lora_message_errors;            /* errors from lora comm layer   */
+lora_message formatted_array;               /* message array formated        */  
+multi_msg_parser parse_data;                /* parsed lora index data        */
+uint8_t i;                                  /* index                         */
+uint8_t return_message_size;                /* rtn msg size                  */
+bool message_rxed;                          /* message received              */
+uint8_t local_raw_msg[ MAX_LORA_MSG_SIZE ]; /* raw single lora msg data      */
+message_errors local_errors;                /* single lora msg errors        */
+uint8_t local_size;                         /* single lora msg size          */
+rx_message local_msg;                       /* single message rx struct      */
+/*----------------------------------------------------------
+Initilize local variables
+----------------------------------------------------------*/
+memset( &raw_lora,        0, (sizeof(uint8_t)*MAX_LORA_MSG_SIZE) );
+memset( &local_raw_msg,   0, (sizeof(uint8_t)*MAX_LORA_MSG_SIZE) );
+memset( &return_msg,      0, sizeof( rx_multi )         );
+memset( &parse_data,      0, sizeof( multi_msg_parser ) );
+memset( &formatted_array, 0, sizeof( lora_message )     );
+memset( &local_msg,       0, sizeof( rx_message )       );
+
+return_message_size = 0;
+return_msg_idx      = 0;
+raw_lora_size       = 0;
+i                   = 0;
+local_size          = 0;
+local_errors        = MSG_NO_ERROR;
+lora_message_errors = RX_TIMEOUT;
+message_rxed        = false;
+
+/*----------------------------------------------------------
+determine if message was rx'ed and get lora errors
+----------------------------------------------------------*/
+message_rxed = p_lora.get_message( raw_lora, MAX_LORA_MSG_SIZE, &raw_lora_size, &lora_message_errors );
+
+/*----------------------------------------------------------
+if issues with lora_get_message, update global error
+----------------------------------------------------------*/
+if ( lora_message_errors != RX_NO_ERROR )
+    {
+    return_msg.global_errors = MSG_HW_ERROR;
+    }
+
+/*----------------------------------------------------------
+if no message rx'ed or we have lora errors, exit
+----------------------------------------------------------*/
+if( return_msg.global_errors != MSG_NO_ERROR || message_rxed == false )
+    {
+    return return_msg;
+    }
+
+/*----------------------------------------------------------
+Parse through raw lora data and determine how many messages
+and their sizes
+----------------------------------------------------------*/
+parse_data = lora_prepper( raw_lora, raw_lora_size );
+
+/*----------------------------------------------------------
+Update global errors with any found during parsing
+----------------------------------------------------------*/
+if( parse_data.errors != MSG_NO_ERROR )
+    {
+    return_msg.global_errors = parse_data.errors;
+    }
+
+/*----------------------------------------------------------
+for-each rx'ed messages
+----------------------------------------------------------*/
+for( i = 0; i < parse_data.num_msg; i++ )
+    {
+    /*------------------------------------------------------
+    cleardata for each message
+    ------------------------------------------------------*/
+    memset( &formatted_array, 0, sizeof( lora_message ) );
+    memset( &local_msg, 0, sizeof(rx_message) ); 
+    memset( &local_raw_msg, 0, (sizeof(uint8_t)*MAX_LORA_MSG_SIZE) ); 
+
+    /*------------------------------------------------------
+    init data for current rx message
+    ------------------------------------------------------*/
+    memcpy( &local_raw_msg, &(raw_lora[ parse_data.start_idx[i] ]), parse_data.msg_size[i] ); 
+    local_size   = parse_data.msg_size[i];
+
+    /*------------------------------------------------------
+    convert current message into formatted struct
+    ------------------------------------------------------*/
+    formatted_array = covert_message( local_raw_msg, local_size, local_errors );
+    
+    /*----------------------------------------------------------
+    If errors caused message to not be properly converted, skip
+    now to avoid future processing. However still inform user
+    that an errored message has been rxed
+    ----------------------------------------------------------*/
+    if( local_errors != MSG_NO_ERROR )
+        {
+        return_msg.errors[return_msg_idx] = local_errors;
+        return_msg.num_messages++;
+        return_msg_idx++;
+        continue;
+        }
+
+    /*----------------------------------------------------------
+    Calculate and Verify CRC and key
+    ----------------------------------------------------------*/
+    if ( formatted_array.crc != calculate_crc( local_raw_msg, ( formatted_array.size + HEADER_BYTE_COUNT ) ) )
+        {
+        local_msg.valid = false;
+        local_errors = MSG_CRC_ERROR;
+        }
+    else if ( formatted_array.key != p_current_key )
+        {
+        local_msg.valid = false;
+        local_errors = MSG_KEY_ERR;
+        }
+
+    /*----------------------------------------------------------
+    Update rx_message
+    ----------------------------------------------------------*/
+    local_msg.size           = formatted_array.size;
+    memcpy( local_msg.message, formatted_array.message, formatted_array.size );
+
+    /*----------------------------------------------------------
+    if module destination is all, overwrite destination as self.
+
+    This solution was implemented to allow for NUM_OF_MODULE
+    checks 
+    ----------------------------------------------------------*/
+    if( formatted_array.destination == MODULE_ALL )
+        {
+        formatted_array.destination = current_location;
+        }
+
+    /*----------------------------------------------------------
+    Verify destination is a valid location
+    ----------------------------------------------------------*/
+    if( formatted_array.destination < NUM_OF_MODULES )
+        {
+        /*----------------------------------------------------------
+        Verify destination is our modules
+        ----------------------------------------------------------*/
+        if( formatted_array.destination == current_location )
+            {
+            /*----------------------------------------------------------
+            Verify source location
+            ----------------------------------------------------------*/
+            if( formatted_array.source < NUM_OF_MODULES )
+                {
+                local_msg.source = ( location ) formatted_array.source;
+                }
+            else
+                {
+                local_msg.source = INVALID_LOCATION;
+                }
+
+            /*----------------------------------------------------------
+            Verify key
+            ----------------------------------------------------------*/
+            if ( p_current_key != formatted_array.key && local_errors == MSG_NO_ERROR )
+                {
+                local_errors = MSG_KEY_ERR;
+                }
+
+            }
+        else
+            {
+            /*----------------------------------------------------------
+            Message valid but not current location
+            ----------------------------------------------------------*/
+            continue;
+            }
+        }
+    else
+        {
+        /*----------------------------
+        sys_def.h is not up to date
+        ----------------------------*/
+        local_errors = MSG_INVALID_HEADER;
+        }
+
+    /*----------------------------------------------------------
+    Place final message within return buffer and go onto next 
+    item in queue
+    ----------------------------------------------------------*/
+    return_msg.messages[return_msg_idx] = local_msg;
+    return_msg.errors[return_msg_idx]   = local_errors;
+    return_msg_idx++;
+    return_msg.num_messages++;
+    }
+
+/*----------------------------------------------------------
+return object
+----------------------------------------------------------*/
+return return_msg;
+
+} /*  core::messageInterface::get_multi_message() */
+
+/*********************************************************************
+*
+*   PROCEDURE NAME:
+*        core::messageInterface::lora_prepper
+*
+*   DESCRIPTION:
+*       procedure for parsing a raw lora byte stream and determining
+*       how many messages it contains
+*
+*   RETURN:
+*       multi_msg_parser - list of received message indexs within
+*       a raw lora stream
+*
+*********************************************************************/
+multi_msg_parser core::messageInterface::lora_prepper
+    ( 
+    const uint8_t message_array[], /* raw lora data stream */
+    const uint8_t size             /* message_array size   */
+    )
+{
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+uint8_t index;            /* index                        */
+multi_msg_parser rtn_obj; /* return object                */
+uint8_t msg_index;        /* return object index          */
+uint8_t data_size;        /* current message data size    */
+
+/*----------------------------------------------------------
+Local definitions
+----------------------------------------------------------*/
+#define JUMP_TO_SIZE_BYTE ( SIZE_BYTE ) /* jump from byte 0 
+                                           to byte 3      */
+#define JUMP_TO_DATA_BYTE  ( 2 )        /* jump from byte 3 
+                                           to byte 5      */
+
+/*----------------------------------------------------------
+Local variables
+----------------------------------------------------------*/
+index     = 0;
+msg_index = 0;
+data_size = 0;
+memset( &rtn_obj, 0, sizeof( multi_msg_parser ) );
+rtn_obj.errors = MSG_NO_ERROR;
+
+/*----------------------------------------------------------
+Parse through lora data stream
+----------------------------------------------------------*/
+while( index < size )
+    {
+    msg_index = rtn_obj.num_msg;
+    /*----------------------------------------------------------
+    data format 
+    Byte 0 -- destination byte
+    Byte 1 -- source byte
+    Byte 2 -- pad (future expantion)
+    Byte 3 -- version/size byte (upper/lower bits)
+    Byte 4 -- key byte
+    Byte 5 -- start of data region
+    Byte X -- crc (last byte) 
+    ----------------------------------------------------------*/
+    rtn_obj.start_idx[ msg_index ] = index;
+
+    /*----------------------------------------------------------
+    skip ahead 3 bytes to where sizing data is stored
+    ----------------------------------------------------------*/
+    index += JUMP_TO_SIZE_BYTE;
+
+    /*----------------------------------------------------------
+    verify we havent overrun the buffer
+    ----------------------------------------------------------*/
+    if( index >= size )
+        {
+        rtn_obj.errors = MSG_SIZING;
+        break;
+        }
+
+    /*----------------------------------------------------------
+    Parse data size
+    ----------------------------------------------------------*/
+    data_size = ( SIZE_MASK & message_array[ index ] );
+
+    /*----------------------------------------------------------
+    Verify data size is within reason. If not, exit processing
+    ----------------------------------------------------------*/
+    if( data_size > MAXIMUM_MSG_LENGTH )
+        {
+        rtn_obj.errors = MSG_INVALID_HEADER;
+        break;
+        }
+
+    /*----------------------------------------------------------
+    Update object size using header byte count + data size
+    ----------------------------------------------------------*/
+    rtn_obj.msg_size[ msg_index ] = data_size + NON_DATA_BYTE_COUNT;
+    
+    /*----------------------------------------------------------
+    Jump to CRC byte
+    ----------------------------------------------------------*/
+    index += ( JUMP_TO_DATA_BYTE + data_size );
+
+    /*----------------------------------------------------------
+    verify we havent overrun the buffer
+    ----------------------------------------------------------*/
+    if( index >= size )
+        {
+        rtn_obj.errors = MSG_SIZING;
+        break;
+        }
+
+    /*----------------------------------------------------------
+    Update message end index
+    ----------------------------------------------------------*/
+    rtn_obj.end_idx[ msg_index ] = index;
+
+    /*----------------------------------------------------------
+    Update message counter
+    ----------------------------------------------------------*/
+    rtn_obj.num_msg++; 
+
+    /*----------------------------------------------------------
+    Update index to begin parsing the next message
+    ----------------------------------------------------------*/
+    index++;
+    }
+
+
+return rtn_obj;
+} /* core::messageInterface::lora_prepper() */
