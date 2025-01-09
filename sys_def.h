@@ -1,3 +1,5 @@
+#ifndef SYS_DEF_H
+#define SYS_DEF_H
 /*********************************************************************
 *
 *   HEADER:
@@ -61,3 +63,4 @@ extern const location current_location;   /* current module needs to be
 --------------------------------------------------------------------*/
 
 /* sys_def.h */
+#endif
