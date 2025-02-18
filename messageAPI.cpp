@@ -463,6 +463,15 @@ Send message
 errors = p_lora.send_message(message_array, array_size );
 
 /*----------------------------------------------------------
+Report errors if present. Continue and attempt to
+put lora into RX mode
+----------------------------------------------------------*/
+if( errors != MSG_NO_ERROR )
+    {
+    errors = MSG_HW_ERROR;
+    }
+
+/*----------------------------------------------------------
 Revert to rx continious mode
 ----------------------------------------------------------*/
 if( ! p_lora.init_continious_rx() )
