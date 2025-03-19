@@ -1,3 +1,5 @@
+#ifndef SYS_DEF_H
+#define SYS_DEF_H
 /*********************************************************************
 *
 *   HEADER:
@@ -43,10 +45,10 @@ enum
 /*--------------------------------------------------------------------
                            MEMORY CONSTANTS
 --------------------------------------------------------------------*/
-extern const location current_location;   /* current module needs to be
-                                         defined within project files
-                                         & is based on location 
-                                         enum                       */
+extern location current_location;   /* current module needs to be
+                                        defined within project files
+                                        & is based on location 
+                                        enum                       */
 
 /*--------------------------------------------------------------------
                               VARIABLES
@@ -61,3 +63,4 @@ extern const location current_location;   /* current module needs to be
 --------------------------------------------------------------------*/
 
 /* sys_def.h */
+#endif

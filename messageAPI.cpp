@@ -460,8 +460,11 @@ message_array[ array_size - 1 ] = calculate_crc( message_array, ( message.size +
 /*----------------------------------------------------------
 Send message
 ----------------------------------------------------------*/
-errors = p_lora.send_message(message_array, array_size );
-
+if( !p_lora.send_message(message_array, array_size ) )
+    {
+    errors = MSG_HW_ERROR;
+    }
+    
 /*----------------------------------------------------------
 Revert to rx continious mode
 ----------------------------------------------------------*/
