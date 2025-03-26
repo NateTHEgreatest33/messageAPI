@@ -460,13 +460,7 @@ message_array[ array_size - 1 ] = calculate_crc( message_array, ( message.size +
 /*----------------------------------------------------------
 Send message
 ----------------------------------------------------------*/
-errors = p_lora.send_message(message_array, array_size );
-
-/*----------------------------------------------------------
-Report errors if present. Continue and attempt to
-put lora into RX mode
-----------------------------------------------------------*/
-if( errors != MSG_NO_ERROR )
+if( !p_lora.send_message(message_array, array_size ) )
     {
     errors = MSG_HW_ERROR;
     }
@@ -480,7 +474,7 @@ if( ! p_lora.init_continious_rx() )
     }
 
 /*----------------------------------------------------------
-return error status
+return error status as T/F
 ----------------------------------------------------------*/
 if( errors != MSG_NO_ERROR )
     {
@@ -489,7 +483,7 @@ if( errors != MSG_NO_ERROR )
 
 return true;
 
-} /* score::messageInterface::end_message() */
+} /* core::messageInterface::end_message() */
 
 /*********************************************************************
 *
