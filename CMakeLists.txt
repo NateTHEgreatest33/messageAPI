@@ -14,8 +14,6 @@ add_library( messageAPI
 target_link_libraries( messageAPI
   pico_stdlib 
   hardware_spi
-  # Using Pico W
-  pico_cyw43_arch_none
 
   # libraries
   loraAPI
